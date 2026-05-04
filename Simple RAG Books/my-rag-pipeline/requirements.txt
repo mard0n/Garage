@@ -8,3 +8,5 @@ qdrant-client
 numpy
 tqdm
 requests
+google-generativeai
+openrouter

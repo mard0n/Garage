@@ -1,0 +1,51 @@
+import os
+import requests
+
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+if not OPENROUTER_API_KEY:
+    raise ValueError("OPENROUTER_API_KEY not set")
+
+
+def generate_hypothetical_answer(query: str) -> str:
+    """Generate hypothetical passage using OpenRouter free model."""
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "openrouter/free",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"""Write a short factual passage (2-3 sentences) that would answer this question.
+Question: {query}
+Factual Passage:"""
+                }
+            ],
+            "max_tokens": 200,
+        }
+    )
+
+    result = response.json()
+
+    if 'choices' not in result:
+        raise Exception(f"OpenRouter error: {result}")
+
+    return result['choices'][0]['message']['content'].strip()
+
+
+def hyde_query_vector(query: str):
+    """Generate hypothetical answer and embed it using BGE-M3."""
+    from embed import model
+
+    hypothetical = generate_hypothetical_answer(query)
+    output = model.encode(
+        [hypothetical],
+        max_length=1024,
+        return_dense=True,
+        return_sparse=True,
+        return_colbert_vecs=False,
+    )
+    return output
