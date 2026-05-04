@@ -185,16 +185,16 @@
   },
   "active": "5edf32b06494686f",
   "lastOpenFiles": [
-    "my-rag-pipeline/chunks/chunk_0008.txt",
-    "my-rag-pipeline/chunks/chunk_0007.txt",
-    "my-rag-pipeline/chunks/chunk_0006.txt",
-    "my-rag-pipeline/chunks/chunk_0005.txt",
-    "my-rag-pipeline/chunks/chunk_0004.txt",
-    "my-rag-pipeline/chunks/chunk_0003.txt",
-    "my-rag-pipeline/chunks/chunk_0002.txt",
-    "my-rag-pipeline/chunks/chunk_0001.txt",
-    "my-rag-pipeline/chunks/chunk_0000.txt",
-    "my-rag-pipeline/chunks/chunks.json",
-    "my-rag-pipeline/chunks/chunk_0017.txt"
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/segments/0386f5b7-27da-4fe3-9350-119fd3401cf7/mutable_id_tracker.versions",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/wal/first-index",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/newest_clocks.json",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/segments/0386f5b7-27da-4fe3-9350-119fd3401cf7/mutable_id_tracker.mappings",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/segments/0386f5b7-27da-4fe3-9350-119fd3401cf7/vector_storage-dense/vectors/chunk_0.mmap",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/config.json",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/version.info",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/shard_config.json",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/replica_state.json",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/wal/open-2",
+    "my-rag-pipeline/qdrant_storage/collections/sample_rag/0/wal/open-1"
   ]
 }

@@ -1,6 +1,6 @@
 from extract import extract_document
 from chunk import chunk_document
-# from embed_and_upsert import embed_and_upsert
+from embed_and_upsert import embed_and_upsert
 import glob
 import json
 import os
@@ -30,6 +30,6 @@ for i, chunk in enumerate(all_chunks):
         f.write(chunk['text'])
 print(f'Saved {len(all_chunks)} individual chunk files')
 
-# embed_and_upsert(all_chunks)
+embed_and_upsert(all_chunks)
 
 print('Indexing complete!')
