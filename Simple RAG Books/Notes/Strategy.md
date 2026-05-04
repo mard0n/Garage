@@ -1,4 +1,3 @@
-
 # 1. Chunking
 
 > Which chunking libraries should I use? from PDF to Text??? What if page number matters?
