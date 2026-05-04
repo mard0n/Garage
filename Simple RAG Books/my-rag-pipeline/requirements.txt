@@ -1,0 +1,10 @@
+docling
+chonkie
+FlagEmbedding
+torch
+torchvision
+torchaudio
+qdrant-client
+numpy
+tqdm
+requests

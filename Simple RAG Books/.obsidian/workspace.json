@@ -11,10 +11,14 @@
             "id": "5edf32b06494686f",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Notes/RAG_Pipeline_Setup_Guide_with_Docker.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "RAG_Pipeline_Setup_Guide_with_Docker"
             }
           }
         ]
@@ -90,6 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Notes/RAG_Pipeline_Setup_Guide_with_Docker.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for RAG_Pipeline_Setup_Guide_with_Docker"
             }
           },
           {
@@ -108,11 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "Notes/RAG_Pipeline_Setup_Guide_with_Docker.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from RAG_Pipeline_Setup_Guide_with_Docker"
             }
           },
           {
@@ -150,12 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Notes/RAG_Pipeline_Setup_Guide_with_Docker.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of RAG_Pipeline_Setup_Guide_with_Docker"
             }
           }
         ]
@@ -178,8 +185,16 @@
   },
   "active": "5edf32b06494686f",
   "lastOpenFiles": [
-    "my-rag-pipeline/chunk.py",
-    "my-rag-pipeline/index_pipeline.py",
-    "my-rag-pipeline/extract.py"
+    "my-rag-pipeline/chunks/chunk_0008.txt",
+    "my-rag-pipeline/chunks/chunk_0007.txt",
+    "my-rag-pipeline/chunks/chunk_0006.txt",
+    "my-rag-pipeline/chunks/chunk_0005.txt",
+    "my-rag-pipeline/chunks/chunk_0004.txt",
+    "my-rag-pipeline/chunks/chunk_0003.txt",
+    "my-rag-pipeline/chunks/chunk_0002.txt",
+    "my-rag-pipeline/chunks/chunk_0001.txt",
+    "my-rag-pipeline/chunks/chunk_0000.txt",
+    "my-rag-pipeline/chunks/chunks.json",
+    "my-rag-pipeline/chunks/chunk_0017.txt"
   ]
 }

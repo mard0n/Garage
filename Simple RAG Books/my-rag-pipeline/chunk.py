@@ -1,10 +1,8 @@
-from chonkie import RecursiveChunker, RecursiveRules, RecursiveLevel, OverlapRefinery
+from chonkie import RecursiveChunker, RecursiveRules, RecursiveLevel
 from transformers import AutoTokenizer
 
-# Load BGE-M3 tokenizer
 tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-m3")
 
-# Custom rules: paragraph → sentence → word (fallback)
 rules = RecursiveRules(levels=[
     RecursiveLevel(delimiters=["\n\n"]),
     RecursiveLevel(delimiters=[". ", "? ", "! "]),
@@ -13,16 +11,9 @@ rules = RecursiveRules(levels=[
 
 chunker = RecursiveChunker(
     tokenizer=tokenizer,
-    chunk_size=500,
+    chunk_size=512,
     rules=rules,
-    min_characters_per_chunk=24,
-)
-
-overlap_refinery = OverlapRefinery(
-    context_size=100,
-    tokenizer=tokenizer,
-    mode="suffix",
-    merge_context=True,
+    min_characters_per_chunk=50,
 )
 
 def get_page_for_position(text: str, position: int, page_boundaries: list[int]) -> int:
@@ -33,33 +24,13 @@ def get_page_for_position(text: str, position: int, page_boundaries: list[int]) 
     return len(page_boundaries)
 
 
-def chunk_document(doc_data: dict, window_size: int = 2000, stride: int = 500) -> list[dict]:
-    """Chunk document with sliding window, tracking page spans."""
+def chunk_document(doc_data: dict) -> list[dict]:
+    """Chunk document without sliding windows or overlap."""
     text = doc_data["text"]
     source = doc_data["source"]
     num_pages = doc_data["num_pages"]
 
-    total_tokens = len(tokenizer.encode(text))
-
-    if total_tokens <= window_size:
-        raw_chunks = chunker.chunk(text)
-        refined_chunks = overlap_refinery(raw_chunks)
-    else:
-        all_refined_chunks = []
-        for start in range(0, total_tokens, stride):
-            end = min(start + window_size, total_tokens)
-            window_text = tokenizer.decode(tokenizer.encode(text)[start:end])
-
-            raw_chunks = chunker.chunk(window_text)
-            refined_chunks = overlap_refinery(raw_chunks)
-
-            for chunk in refined_chunks:
-                chunk.start_token = start + chunk.start_index
-                chunk.end_token = start + chunk.end_index
-
-            all_refined_chunks.extend(refined_chunks)
-
-        refined_chunks = all_refined_chunks
+    raw_chunks = chunker.chunk(text)
 
     page_boundaries = []
     if num_pages > 1:
@@ -68,7 +39,7 @@ def chunk_document(doc_data: dict, window_size: int = 2000, stride: int = 500) -
             page_boundaries.append(int(p * chars_per_page))
 
     results = []
-    for i, chunk in enumerate(refined_chunks):
+    for i, chunk in enumerate(raw_chunks):
         char_start = chunk.start_index
         char_end = chunk.end_index
 
@@ -86,7 +57,7 @@ def chunk_document(doc_data: dict, window_size: int = 2000, stride: int = 500) -
                 "source": source,
                 "pages": page_range,
                 "chunk_index": i,
-                "strategy": "recursive_with_overlap",
+                "strategy": "recursive",
             },
         })
 
