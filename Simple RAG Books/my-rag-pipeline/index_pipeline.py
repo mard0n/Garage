@@ -1,4 +1,3 @@
-from extract import extract_document
 from chunk import chunk_document
 from embed_and_upsert import embed_and_upsert
 import glob
@@ -13,8 +12,7 @@ os.makedirs(output_dir, exist_ok=True)
 all_chunks = []
 for pdf in pdf_files:
     print(f'Processing: {pdf}')
-    doc_data = extract_document(pdf)
-    chunks = chunk_document(doc_data)
+    chunks = chunk_document(pdf)
     all_chunks.extend(chunks)
 
 print(f'Total chunks to index: {len(all_chunks)}')
@@ -30,6 +28,6 @@ for i, chunk in enumerate(all_chunks):
         f.write(chunk['text'])
 print(f'Saved {len(all_chunks)} individual chunk files')
 
-# embed_and_upsert(all_chunks)
+embed_and_upsert(all_chunks)
 
 print('Indexing complete!')

@@ -1,63 +1,59 @@
-from chonkie import RecursiveChunker, RecursiveRules, RecursiveLevel
+from docling.chunking import HybridChunker
+from docling.document_converter import DocumentConverter
+from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-m3")
+converter = DocumentConverter()
 
-rules = RecursiveRules(levels=[
-    RecursiveLevel(delimiters=["\n\n"]),
-    RecursiveLevel(delimiters=[". ", "? ", "! "]),
-    RecursiveLevel(whitespace=True),
-])
-
-chunker = RecursiveChunker(
-    tokenizer=tokenizer,
-    chunk_size=512,
-    rules=rules,
-    min_characters_per_chunk=50,
+tokenizer = HuggingFaceTokenizer(
+    tokenizer=AutoTokenizer.from_pretrained("BAAI/bge-m3"),
+    max_tokens=512,
 )
 
-def get_page_for_position(text: str, position: int, page_boundaries: list[int]) -> int:
-    """Get page number for a character position."""
-    for i, boundary in enumerate(page_boundaries):
-        if position < boundary:
-            return i + 1
-    return len(page_boundaries)
+chunker = HybridChunker(tokenizer=tokenizer)
 
+def get_page_range(chunk) -> str:
+    page_start = None
+    page_end = None
 
-def chunk_document(doc_data: dict) -> list[dict]:
-    """Chunk document without sliding windows or overlap."""
-    text = doc_data["text"]
-    source = doc_data["source"]
-    num_pages = doc_data["num_pages"]
+    for item in chunk.meta.doc_items:
+        if hasattr(item, "prov") and item.prov:
+            for prov in item.prov:
+                if hasattr(prov, "page_no") and prov.page_no:
+                    if page_start is None:
+                        page_start = prov.page_no
+                    page_end = prov.page_no
 
-    raw_chunks = chunker.chunk(text)
+    if page_start is None:
+        page_start = 1
+    if page_end is None:
+        page_end = page_start
 
-    page_boundaries = []
-    if num_pages > 1:
-        chars_per_page = len(text) / num_pages
-        for p in range(1, num_pages):
-            page_boundaries.append(int(p * chars_per_page))
+    if page_start == page_end:
+        page_range = str(page_start)
+    else:
+        page_range = f"{page_start}-{page_end}"
+
+    return page_range
+    
+
+def chunk_document(file_path: str) -> list[dict]:
+    result = converter.convert(source=file_path)
+    doc = result.document
+
+    raw_chunks = chunker.chunk(dl_doc=doc)
 
     results = []
     for i, chunk in enumerate(raw_chunks):
-        char_start = chunk.start_index
-        char_end = chunk.end_index
-
-        start_page = get_page_for_position(text, char_start, page_boundaries) if page_boundaries else 1
-        end_page = get_page_for_position(text, char_end, page_boundaries) if page_boundaries else num_pages
-
-        if start_page == end_page:
-            page_range = str(start_page)
-        else:
-            page_range = f"{start_page}-{end_page}"
+        page_range = get_page_range(chunk)
 
         results.append({
-            "text": chunk.text,
+            "text": chunker.contextualize(chunk),
             "metadata": {
-                "source": source,
+                "source": file_path,
                 "pages": page_range,
                 "chunk_index": i,
-                "strategy": "recursive",
+                "strategy": "docling_hybrid",
             },
         })
 
