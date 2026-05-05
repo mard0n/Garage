@@ -30,6 +30,6 @@ for i, chunk in enumerate(all_chunks):
         f.write(chunk['text'])
 print(f'Saved {len(all_chunks)} individual chunk files')
 
-embed_and_upsert(all_chunks)
+# embed_and_upsert(all_chunks)
 
 print('Indexing complete!')
