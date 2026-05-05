@@ -1,20 +1,18 @@
-from FlagEmbedding import FlagReranker
+from sentence_transformers import CrossEncoder
 
-reranker = FlagReranker(
-    'BAAI/bge-reranker-v2-m3',
-    use_fp16=False,
-)
+reranker = CrossEncoder('BAAI/bge-reranker-v2-m3', device='cpu')
+
 
 def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
     """Rerank candidates using BGE-Reranker-v2-m3."""
     pairs = [[query, c['text']] for c in candidates]
-    scores = reranker.compute_score(pairs, normalize=True)
+    scores = reranker.predict(pairs)
     ranked = sorted(
         zip(candidates, scores),
         key=lambda x: x[1],
         reverse=True
     )
     return [
-        {**cand, 'rerank_score': score}
+        {**cand, 'rerank_score': float(score)}
         for cand, score in ranked[:top_n]
     ]

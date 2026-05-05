@@ -19,7 +19,7 @@ def hybrid_search(embedding_output: dict, top_k: int = 20) -> list[dict]:
         values=list(sparse_weights.values()),
     )
     results = client.query_points(
-        collection_name='my_rag',
+        collection_name='sample_rag',
         prefetch=[
             Prefetch(
                 query=dense_vec,

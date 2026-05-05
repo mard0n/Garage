@@ -1,6 +1,7 @@
 import os
 from hybrid_search import hybrid_search
 from hyde import hyde_query_vector, generate_hypothetical_answer
+from rerank import rerank
 from FlagEmbedding import BGEM3FlagModel
 
 model = BGEM3FlagModel(
@@ -32,7 +33,8 @@ def answer_query(question: str, use_hyde: bool = True) -> list[dict]:
             return_colbert_vecs=False,
         )
     candidates = hybrid_search(output, top_k=20)
-    return candidates
+    reranked = rerank(question, candidates, top_n=10)
+    return reranked
 
 
 if __name__ == '__main__':
