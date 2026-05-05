@@ -7,7 +7,12 @@ from qdrant_client.models import (
     Fusion,
 )
 qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
-client = QdrantClient(url=qdrant_url)
+qdrant_api_key = os.getenv('QDRANT_API_KEY')
+
+if qdrant_api_key:
+    client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+else:
+    client = QdrantClient(url=qdrant_url)
 
 
 def hybrid_search(embedding_output: dict, top_k: int = 20) -> list[dict]:

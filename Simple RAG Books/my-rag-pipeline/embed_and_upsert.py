@@ -6,12 +6,17 @@ import uuid
 import os
 
 qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
-client = QdrantClient(url=qdrant_url)
+qdrant_api_key = os.getenv('QDRANT_API_KEY')
+
+if qdrant_api_key:
+    client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+else:
+    client = QdrantClient(url=qdrant_url)
 
 model = BGEM3FlagModel(
     'BAAI/bge-m3',
-    use_fp16=False,   # CPU doesn't benefit from fp16
-    device='cpu',      # Changed from 'cuda'
+    use_fp16=True,   # GPU benefits from fp16
+    device='cuda',   # Use GPU for embedding
 )
 
 

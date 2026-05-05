@@ -6,8 +6,8 @@ from FlagEmbedding import BGEM3FlagModel
 
 model = BGEM3FlagModel(
     'BAAI/bge-m3',
-    use_fp16=False,   # CPU doesn't benefit from fp16
-    device='cpu',      # Changed from 'cuda'
+    use_fp16=True,   # GPU benefits from fp16
+    device='cuda',   # Use GPU for embedding
 )
 
 def answer_query(question: str, use_hyde: bool = True) -> list[dict]:
