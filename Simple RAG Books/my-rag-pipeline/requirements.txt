@@ -10,3 +10,8 @@ tqdm
 requests
 google-generativeai
 openrouter
+pymupdf
+fastapi
+uvicorn
+python-dotenv
+google-cloud-storage

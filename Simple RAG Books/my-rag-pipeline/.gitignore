@@ -8,6 +8,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+documents/
 eggs/
 .eggs/
 lib/
@@ -44,3 +45,5 @@ Thumbs.db
 # Logs
 *.log
 chunks/
+runpod
+runpod.pub

@@ -13,6 +13,7 @@ services:
   rag:
     build: .
     container_name: rag-pipeline
+    runtime: nvidia
     volumes:
       - ./documents:/app/documents      # your PDFs on Mac → container
       - ./:/app                         # live code sync — edit on Mac, runs in container
@@ -22,6 +23,8 @@ services:
       - .env
     environment:
       - QDRANT_URL=${QDRANT_URL}   # container-to-container networking
-      - GOOGLE_API_KEY={GOOGLE_API_KEY} 
+      - GOOGLE_API_KEY={GOOGLE_API_KEY}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
     stdin_open: true
     tty: true
