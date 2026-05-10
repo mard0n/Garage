@@ -18,13 +18,8 @@ def get_model():
     global model
     if model is None:
         print("[serve_search_api] Loading BGE-M3 embedding model...")
-        from FlagEmbedding import BGEM3FlagModel
+        from embed_model import model
 
-        model = BGEM3FlagModel(
-            "BAAI/bge-m3",
-            use_fp16=True,
-            device="cuda",
-        )
         print("[serve_search_api] Model loaded successfully")
     return model
 
@@ -53,7 +48,7 @@ def load_book_metadata() -> dict:
 
 class SearchRequest(BaseModel):
     query: str
-    use_hyde: bool = True
+    use_hyde: bool = False
     top_n: int = 10
 
 

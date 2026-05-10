@@ -1,5 +1,5 @@
-import json
 import glob
+import json
 import os
 import sys
 from pathlib import Path
@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from chunk import chunk_document
+
 from embed_and_upsert import embed_and_upsert
 
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
@@ -29,7 +30,9 @@ def index_all():
 
     metadata = load_book_metadata()
     if not metadata:
-        print("WARNING: book_metadata.json not found. GCS URLs won't be added to chunks.")
+        print(
+            "WARNING: book_metadata.json not found. GCS URLs won't be added to chunks."
+        )
         print("Run upload_pdfs.py first to create it.\n")
 
     pdf_files = glob.glob(str(DOCUMENTS_DIR / "*.pdf"))
@@ -71,7 +74,7 @@ def index_all():
     embed_and_upsert(all_chunks)
 
     print("\n=== Indexing Complete ===")
-    print(f"Collection: sample_rag")
+    print(f"Collection: rag_books_rus")
     print(f"Total points: {len(all_chunks)}")
 
 
