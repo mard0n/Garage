@@ -1,28 +1,23 @@
-from FlagEmbedding import BGEM3FlagModel
+from embed_model import model
 from hybrid_search import hybrid_search
-from hyde import generate_hypothetical_answer, hyde_query_vector
-from rerank import rerank
 
-model = BGEM3FlagModel(
-    "BAAI/bge-m3",
-    use_fp16=True,  # GPU benefits from fp16
-    device="cuda",  # Use GPU for embedding
-)
+# from hyde import hyde_query_vector
+from rerank import rerank
 
 
 def answer_query(question: str, use_hyde: bool = False) -> list[dict]:
     """Answer a question using HyDE + hybrid search (+ reranking)."""
     try:
-        if use_hyde:
-            output = hyde_query_vector(question)
-        else:
-            output = model.encode(
-                [question],
-                max_length=1024,
-                return_dense=True,
-                return_sparse=True,
-                return_colbert_vecs=False,
-            )
+        # if use_hyde:
+        # output = hyde_query_vector(question)
+        # else:
+        output = model.encode(
+            [question],
+            max_length=1024,
+            return_dense=True,
+            return_sparse=True,
+            return_colbert_vecs=False,
+        )
     except Exception as e:
         print(f"HyDE failed: {e}, falling back to raw query")
         output = model.encode(

@@ -1,23 +1,23 @@
-from qdrant_client.models import PointStruct, SparseVector, Distance, VectorParams, SparseVectorParams
-from qdrant_client import QdrantClient
-from FlagEmbedding import BGEM3FlagModel
-
-import uuid
 import os
+import uuid
 
-qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
-qdrant_api_key = os.getenv('QDRANT_API_KEY')
+from embed_model import model
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance,
+    PointStruct,
+    SparseVector,
+    SparseVectorParams,
+    VectorParams,
+)
+
+qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
 if qdrant_api_key:
     client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
 else:
     client = QdrantClient(url=qdrant_url)
-
-model = BGEM3FlagModel(
-    'BAAI/bge-m3',
-    use_fp16=True,   # GPU benefits from fp16
-    device='cuda',   # Use GPU for embedding
-)
 
 
 BATCH_SIZE = 32
@@ -61,16 +61,12 @@ def embed_and_upsert(chunks: list[dict]):
 
         print(f"Embedded batch {i // BATCH_SIZE + 1}")
 
-    if not client.collection_exists(collection_name="sample_rag"):
+    if not client.collection_exists(collection_name="rag_books_rus"):
         client.create_collection(
-            collection_name="sample_rag",
-            vectors_config={
-                "dense": VectorParams(size=1024, distance=Distance.COSINE)
-            },
-            sparse_vectors_config={
-                "sparse": SparseVectorParams()
-            }
+            collection_name="rag_books_rus",
+            vectors_config={"dense": VectorParams(size=1024, distance=Distance.COSINE)},
+            sparse_vectors_config={"sparse": SparseVectorParams()},
         )
 
-    client.upsert(collection_name="sample_rag", points=points)
+    client.upsert(collection_name="rag_books_rus", points=points)
     print(f"Upserted {len(points)} points to Qdrant")

@@ -1,15 +1,10 @@
-import time
-
 import fitz
-import torch
 from docling.chunking import HybridChunker
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
-
-print(f"  PyTorch device: {'mps' if torch.backends.mps.is_available() else 'cpu'}")
 
 pipeline_options = PdfPipelineOptions()
 pipeline_options.do_ocr = False
@@ -52,20 +47,30 @@ def get_page_range(chunk) -> str:
     return page_range
 
 
-def chunk_document(file_path: str, title: str) -> list[dict]:
-    needs_ocr = "needsocr" in title.lower()
+def is_pdf_scanned_image(file_path: str, threshold: int = 50) -> bool:
+    doc = fitz.open(file_path)
+    has_text = False
+    for page_num in range(min(doc.page_count, 3)):
+        page = doc[page_num]
+        text = page.get_text()
+        if text and len(text.strip()) > threshold:
+            has_text = True
+            break
+    doc.close()
+    return not has_text
+
+
+def chunk_document(file_path: str) -> list[dict]:
 
     doc = fitz.open(file_path)
     page_count = len(doc)
     doc.close()
 
-    print(f"  OCR needed: {needs_ocr} ({page_count} pages)")
-
     pipeline_options = PdfPipelineOptions()
-    pipeline_options.do_ocr = needs_ocr
+    pipeline_options.do_ocr = is_pdf_scanned_image(file_path)
     pipeline_options.do_table_structure = True
 
-    if needs_ocr:
+    if pipeline_options.do_ocr:
         print(f"  OCR enabled - will process {page_count} pages...")
 
     converter = DocumentConverter(
@@ -74,15 +79,8 @@ def chunk_document(file_path: str, title: str) -> list[dict]:
         }
     )
 
-    start_time = time.time()
     result = converter.convert(source=file_path)
-    convert_time = time.time() - start_time
-
-    avg_time_per_page = convert_time / page_count if page_count > 0 else 0
-    print(f"  Converted in {convert_time:.1f}s ({avg_time_per_page:.2f}s/page)")
-
     doc = result.document
-
     raw_chunks = chunker.chunk(dl_doc=doc)
 
     results = []

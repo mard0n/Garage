@@ -28,7 +28,7 @@ Docling  →  Chonkie  →  BGE-M3  →  Qdrant
 
 **All you need on your Mac:**
 - Docker Desktop — [download here](https://www.docker.com/products/docker-desktop/)
-- That's it. Python, torch, and all ML packages run inside Docker.
+- That's it. Python, and all ML packages run inside Docker.
 
 **Verify Docker is running:**
 ```bash
@@ -91,9 +91,6 @@ my-rag-pipeline/
 docling
 chonkie
 FlagEmbedding
-torch
-torchvision
-torchaudio
 qdrant-client
 numpy
 tqdm
@@ -163,7 +160,7 @@ services:
 ### 2.4 — Build and Start Everything
 
 ```bash
-# Build the RAG container (first time takes 5-10 min — downloading torch, docling etc.)
+# Build the RAG container (first time takes 5-10 min — downloading docling etc.)
 docker compose build
 
 # Start both containers

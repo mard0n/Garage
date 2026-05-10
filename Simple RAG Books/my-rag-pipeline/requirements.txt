@@ -1,6 +1,5 @@
 docling
 FlagEmbedding
-torch
 qdrant-client
 requests
 openrouter
