@@ -1,5 +1,4 @@
 #!/bin/bash
-cd "/workspace/Garage/Simple-RAG-Books/my-rag-pipeline"
-source venv/bin/activate
+cd /workspace/Garage/Simple-RAG-Books/my-rag-pipeline
 source .env
-exec python serve_search_api.py
+exec /workspace/Garage/Simple-RAG-Books/my-rag-pipeline/venv/bin/python serve_search_api.py
