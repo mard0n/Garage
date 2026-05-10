@@ -1,14 +1,14 @@
-import os
-from hybrid_search import hybrid_search
-from hyde import hyde_query_vector, generate_hypothetical_answer
-from rerank import rerank
 from FlagEmbedding import BGEM3FlagModel
+from hybrid_search import hybrid_search
+from hyde import generate_hypothetical_answer, hyde_query_vector
+from rerank import rerank
 
 model = BGEM3FlagModel(
-    'BAAI/bge-m3',
-    use_fp16=True,   # GPU benefits from fp16
-    device='cuda',   # Use GPU for embedding
+    "BAAI/bge-m3",
+    use_fp16=True,  # GPU benefits from fp16
+    device="cuda",  # Use GPU for embedding
 )
+
 
 def answer_query(question: str, use_hyde: bool = False) -> list[dict]:
     """Answer a question using HyDE + hybrid search (+ reranking)."""
@@ -37,10 +37,11 @@ def answer_query(question: str, use_hyde: bool = False) -> list[dict]:
     return reranked
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1:
-        query = ' '.join(sys.argv[1:])
+        query = " ".join(sys.argv[1:])
     else:
         query = input("Enter your question: ")
     results = answer_query(query)
@@ -51,5 +52,5 @@ if __name__ == '__main__':
         print(f"--- Result {i + 1} (score: {r.get('score', 0):.3f}) ---")
         print(f"Source: {r['metadata'].get('source', 'N/A')}")
         print(f"Pages: {r['metadata'].get('pages', 'N/A')}")
-        print(r['text'][:300] + "..." if len(r['text']) > 300 else r['text'])
+        print(r["text"][:300] + "..." if len(r["text"]) > 300 else r["text"])
         print()
