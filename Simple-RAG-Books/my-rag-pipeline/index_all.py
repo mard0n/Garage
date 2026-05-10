@@ -74,7 +74,7 @@ def index_all():
     embed_and_upsert(all_chunks)
 
     print("\n=== Indexing Complete ===")
-    print(f"Collection: rag_books_rus")
+    print(f"Collection: sample_rag")
     print(f"Total points: {len(all_chunks)}")
 
 

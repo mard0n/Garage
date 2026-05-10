@@ -20,7 +20,21 @@ export async function searchBooks(query: string): Promise<SearchResponse> {
   });
 
   if (!res.ok) {
-    throw new Error(`Search failed: ${res.statusText}`);
+    let message = res.statusText;
+    try {
+      const data = await res.json();
+      if (data.detail) {
+        try {
+          const parsed = JSON.parse(data.detail);
+          message = parsed.error || parsed.traceback || data.detail;
+        } catch {
+          message = data.detail;
+        }
+      }
+    } catch {
+      message = await res.text() || message;
+    }
+    throw new Error(`Search failed: ${message}`);
   }
 
   return res.json();
