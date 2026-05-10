@@ -39,6 +39,8 @@ qdrant_storage/
 .env
 .env.local
 *.env
+# Deployment scripts
+scripts/deploy.sh
 # OS
 .DS_Store
 Thumbs.db
