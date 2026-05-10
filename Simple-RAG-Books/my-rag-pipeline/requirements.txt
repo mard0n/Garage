@@ -1,0 +1,13 @@
+docling
+FlagEmbedding
+qdrant-client
+requests
+openrouter
+pymupdf
+fastapi
+uvicorn
+python-dotenv
+google-cloud-storage
+transformers
+sentence-transformers
+pydantic
