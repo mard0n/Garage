@@ -10,7 +10,7 @@ model = BGEM3FlagModel(
     device='cuda',   # Use GPU for embedding
 )
 
-def answer_query(question: str, use_hyde: bool = True) -> list[dict]:
+def answer_query(question: str, use_hyde: bool = False) -> list[dict]:
     """Answer a question using HyDE + hybrid search (+ reranking)."""
     try:
         if use_hyde:

@@ -8,25 +8,29 @@ if not OPENROUTER_API_KEY:
 
 def generate_hypothetical_answer(query: str) -> str:
     """Generate hypothetical passage using OpenRouter free model."""
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "openrouter/free",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"""Write a short factual passage (2-3 sentences) that would answer this question.
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "openrouter/free",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"""Write a short factual passage (2-3 sentences) that would answer this question.
 Question: {query}
 Factual Passage:"""
-                }
-            ],
-            "max_tokens": 200,
-        }
-    )
+                    }
+                ],
+                "max_tokens": 200,
+            },
+            timeout=10,
+        )
+    except requests.exceptions.Timeout:
+        raise Exception("OpenRouter request timed out")
 
     result = response.json()
 
