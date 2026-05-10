@@ -33,7 +33,7 @@ python scripts/index_all.py
 echo ""
 echo "[3/3] Starting search API..."
 cd "$SCRIPT_DIR/.."
-uvicorn scripts.serve_search_api:app --host 0.0.0.0 --port 8000 &
+uvicorn scripts.serve_search_api:app --host 0.0.0.0 --port 8080 &
 API_PID=$!
 
 echo ""

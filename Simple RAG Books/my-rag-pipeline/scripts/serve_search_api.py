@@ -9,7 +9,20 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from query_pipeline import answer_query
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        from FlagEmbedding import BGEM3FlagModel
+        model = BGEM3FlagModel(
+            "BAAI/bge-m3",
+            use_fp16=True,
+            device="cuda",
+        )
+    return model
+
+from query_pipeline import hybrid_search, rerank
 
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
 
@@ -59,7 +72,17 @@ async def health():
 @app.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest):
     try:
-        raw_results = answer_query(req.query, use_hyde=req.use_hyde)
+        encoder = get_model()
+        output = encoder.encode(
+            [req.query],
+            max_length=1024,
+            return_dense=True,
+            return_sparse=True,
+            return_colbert_vecs=False,
+        )
+
+        candidates = hybrid_search(output, top_k=20)
+        raw_results = rerank(req.query, candidates, top_n=req.top_n)
 
         metadata = load_book_metadata()
 
@@ -111,4 +134,4 @@ async def list_books():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
