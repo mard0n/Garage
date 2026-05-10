@@ -4,14 +4,14 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from chunk import chunk_document
 from embed_and_upsert import embed_and_upsert
 
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
-OUTPUT_DIR = Path(__file__).parent.parent / "chunks"
-DOCUMENTS_DIR = Path(__file__).parent.parent / "documents"
+OUTPUT_DIR = Path(__file__).parent / "chunks"
+DOCUMENTS_DIR = Path(__file__).parent / "documents"
 
 
 def load_book_metadata() -> dict:
@@ -22,7 +22,10 @@ def load_book_metadata() -> dict:
 
 
 def index_all():
-    print("=== RAG Indexing Pipeline ===\n")
+    print("=== RAG Indexing Pipeline ===")
+    print(f"Documents dir: {DOCUMENTS_DIR}")
+    print(f"Output dir: {OUTPUT_DIR}")
+    print(f"Metadata file: {METADATA_FILE}\n")
 
     metadata = load_book_metadata()
     if not metadata:

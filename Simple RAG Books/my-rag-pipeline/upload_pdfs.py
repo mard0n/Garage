@@ -7,18 +7,26 @@ from dotenv import load_dotenv
 from google.cloud import storage
 from google.oauth2 import service_account
 
-env_path = Path(__file__).parent.parent / ".env"
+print("[upload_pdfs] Starting PDF upload to GCS...")
+
+env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
-DOCUMENTS_DIR = Path(__file__).parent.parent / "documents"
+DOCUMENTS_DIR = Path(__file__).parent / "documents"
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
 
 GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID")
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
 GCS_SA_KEY_JSON = os.getenv("GCS_SERVICE_ACCOUNT_JSON")
 
+print(f"[upload_pdfs] GCS Project: {GCS_PROJECT_ID}")
+print(f"[upload_pdfs] GCS Bucket: {GCS_BUCKET_NAME}")
+print(f"[upload_pdfs] Documents dir: {DOCUMENTS_DIR}")
+print(f"[upload_pdfs] Metadata file: {METADATA_FILE}\n")
+
 
 def get_gcs_client():
+    print("[upload_pdfs] Connecting to GCS...")
     if not GCS_PROJECT_ID or not GCS_SA_KEY_JSON:
         raise ValueError(
             "GCS_PROJECT_ID and GCS_SERVICE_ACCOUNT_JSON must be set in .env"
@@ -26,15 +34,20 @@ def get_gcs_client():
 
     creds_dict = json.loads(GCS_SA_KEY_JSON)
     credentials = service_account.Credentials.from_service_account_info(creds_dict)
-    return storage.Client(project=GCS_PROJECT_ID, credentials=credentials)
+    client = storage.Client(project=GCS_PROJECT_ID, credentials=credentials)
+    print("[upload_pdocs] Connected to GCS successfully")
+    return client
 
 
 def get_bucket():
+    print(f"[upload_pdfs] Getting bucket: {GCS_BUCKET_NAME}")
     client = get_gcs_client()
     bucket = client.bucket(GCS_BUCKET_NAME)
     if not bucket.exists():
+        print(f"[upload_pdfs] Bucket does not exist, creating...")
         bucket = client.create_bucket(GCS_BUCKET_NAME, location="us-central1")
         print(f"Created bucket: gs://{GCS_BUCKET_NAME}")
+    print(f"[upload_pdfs] Using bucket: gs://{GCS_BUCKET_NAME}")
     return bucket
 
 
@@ -81,4 +94,6 @@ def upload_pdfs() -> dict[str, str]:
 
 
 if __name__ == "__main__":
+    print("\n=== Starting PDF Upload ===\n")
     upload_pdfs()
+    print("\n=== Upload Complete ===\n")

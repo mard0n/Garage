@@ -9,18 +9,25 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+print("[serve_search_api] Starting RAG Search API...")
+
 model = None
+
 
 def get_model():
     global model
     if model is None:
+        print("[serve_search_api] Loading BGE-M3 embedding model...")
         from FlagEmbedding import BGEM3FlagModel
+
         model = BGEM3FlagModel(
             "BAAI/bge-m3",
             use_fp16=True,
             device="cuda",
         )
+        print("[serve_search_api] Model loaded successfully")
     return model
+
 
 from query_pipeline import hybrid_search, rerank
 
@@ -72,7 +79,12 @@ async def health():
 @app.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest):
     try:
+        print(
+            f"[serve_search_api] Search request: query='{req.query}', top_n={req.top_n}"
+        )
+
         encoder = get_model()
+        print("[serve_search_api] Encoding query...")
         output = encoder.encode(
             [req.query],
             max_length=1024,
@@ -81,8 +93,13 @@ async def search(req: SearchRequest):
             return_colbert_vecs=False,
         )
 
+        print("[serve_search_api] Running hybrid search...")
         candidates = hybrid_search(output, top_k=20)
+        print(f"[serve_search_api] Found {len(candidates)} candidates")
+
+        print("[serve_search_api] Reranking results...")
         raw_results = rerank(req.query, candidates, top_n=req.top_n)
+        print(f"[serve_search_api] Returning {len(raw_results)} results")
 
         metadata = load_book_metadata()
 
@@ -131,6 +148,7 @@ async def list_books():
     }
 
 
+# source venv/bin/activate && source .env && python serve_search_api.py
 if __name__ == "__main__":
     import uvicorn
 
