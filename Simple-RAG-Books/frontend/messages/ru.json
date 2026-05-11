@@ -1,6 +1,6 @@
 {
   "header": {
-    "logoTitle": "Simple RAG Books",
+    "logoTitle": "E-Kutubxona",
     "logoSubtitle": "Поиск в вашей библиотеке",
     "browse": "Обзор",
     "saved": "Сохранённые",
@@ -26,11 +26,12 @@
     "semanticDescription": "ИИ семантический поиск по содержимому книг.",
     "textDescription": "Поиск по названию/автору в вашей библиотеке.",
     "searchPlaceholder": "Поиск книг…",
+    "search": "Поиск",
     "text": "Текст",
     "ai": "ИИ",
     "loading": "Загрузка...",
     "noMatches": "Совпадений нет",
-    "noBooksFound": "Книги по запросу \"{query}\" не найдены.",
+    "noBooksFound": "Книги по запросу \"{{query}}\" не найдены.",
     "foundBooks": "книг найдено",
     "foundResults": "результатов найдено",
     "unknownBook": "Неизвестная книга",
@@ -61,7 +62,7 @@
     "noCover": "Нет обложки"
   },
   "footer": {
-    "title": "Simple RAG Books",
+    "title": "E-Kutubxona",
     "subtitle": "Поиск и изучение вашей библиотеки",
     "search": "Поиск"
   },

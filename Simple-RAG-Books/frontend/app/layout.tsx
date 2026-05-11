@@ -3,6 +3,7 @@ import { Inter, Literata } from "next/font/google";
 import "./globals.css";
 
 import { SiteHeader } from "@/components/site-header";
+import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
 import { LanguageProvider } from "@/components/language-provider";
 
@@ -19,7 +20,7 @@ const fontSerif = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Simple RAG Books",
+  title: "E-Kutubxona",
   description: "Search and explore your book collection",
 };
 
@@ -40,20 +41,7 @@ export default function RootLayout({
               <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
                 {children}
               </main>
-            <footer className="border-t border-border bg-background/60">
-              <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">Simple RAG Books</span>
-                  <span className="hidden sm:inline">·</span>
-                  <span>Search and explore your library</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <a className="hover:text-foreground" href="/search">
-                    Search
-                  </a>
-                </div>
-              </div>
-            </footer>
+              <Footer />
             </div>
           </LanguageProvider>
         </Providers>

@@ -4,11 +4,23 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, BookOpen, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  ExternalLink,
+  Loader2,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { textSearch, semanticSearch, type Book, type SearchResponse } from "@/lib/api";
+import {
+  textSearch,
+  semanticSearch,
+  type Book,
+  type SearchResponse,
+} from "@/lib/api";
 import { useTranslation } from "react-i18next";
 
 interface SearchPageProps {
@@ -23,7 +35,9 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
   const searchType = params.type || "text";
 
   const [books, setBooks] = useState<Book[]>([]);
-  const [semanticResults, setSemanticResults] = useState<SearchResponse | null>(null);
+  const [semanticResults, setSemanticResults] = useState<SearchResponse | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState(query);
@@ -64,7 +78,9 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInput.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchInput)}&type=${searchType}`);
+      router.push(
+        `/search?q=${encodeURIComponent(searchInput)}&type=${searchType}`,
+      );
     }
   };
 
@@ -86,7 +102,9 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
             <ArrowLeft className="size-4" aria-hidden="true" />
             {t("search.back")}
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("search.title")}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t("search.title")}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {searchType === "semantic"
               ? t("search.semanticDescription")
@@ -95,7 +113,10 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
         </div>
       </div>
 
-      <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <form
+        onSubmit={handleSearch}
+        className="flex flex-col gap-2 sm:flex-row sm:items-center"
+      >
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -146,14 +167,21 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
         </div>
       )}
 
-      {error && <div className="py-12 text-center text-destructive">{error}</div>}
+      {error && (
+        <div className="py-12 text-center text-destructive">{error}</div>
+      )}
 
       {!loading && !error && searchType === "text" && books.length === 0 && (
-        <Card className="border-dashed">
+        <Card className="border-dashed pt-10">
           <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
-            <BookOpen className="size-6 text-muted-foreground" aria-hidden="true" />
-            <div className="font-medium">{t("search.noMatches")}</div>
-            <div className="text-sm text-muted-foreground">{t("search.noBooksFound", { query })}</div>
+            <BookOpen
+              className="size-6 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <div className="font-medium pt-4">{t("search.noMatches")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("search.noBooksFound", { query })}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -165,7 +193,10 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
           </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {books.map((book) => (
-              <Link key={book.filename} href={`/book/${encodeURIComponent(book.filename)}`}>
+              <Link
+                key={book.filename}
+                href={`/book/${encodeURIComponent(book.filename)}`}
+              >
                 <Card className="h-full overflow-hidden transition-shadow hover:shadow-md">
                   <div className="relative aspect-[2/3] bg-muted">
                     {book.thumbnail_gcs_url ? (
@@ -178,15 +209,19 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
                         className="object-cover"
                       />
                     ) : (
-<div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                          <BookOpen className="size-5" aria-hidden="true" />
-                          <span className="text-xs">{t("search.noCover")}</span>
-                        </div>
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <BookOpen className="size-5" aria-hidden="true" />
+                        <span className="text-xs">{t("search.noCover")}</span>
+                      </div>
                     )}
                   </div>
-                  <CardContent className="space-y-1 p-3">
-                    <h3 className="line-clamp-2 text-sm font-medium leading-tight">{book.title}</h3>
-                    <p className="line-clamp-1 text-xs text-muted-foreground">{book.author}</p>
+                  <CardContent className="space-y-1 p-3 pt-3">
+                    <h3 className="line-clamp-2 text-sm font-medium leading-tight mb-2">
+                      {book.title}
+                    </h3>
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                      {book.author}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>
@@ -204,14 +239,22 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
             {semanticResults.results.map((result, index) => (
               <Card key={index} className="p-4">
                 <div className="mb-2 flex items-start justify-between gap-4">
-                  <h3 className="font-medium">{result.book_title || t("search.unknownBook")}</h3>
+                  <h3 className="font-medium">
+                    {result.book_title || t("search.unknownBook")}
+                  </h3>
                   <span className="shrink-0 text-sm text-muted-foreground">
                     {t("search.score")}: {result.score.toFixed(2)}
                   </span>
                 </div>
-                {result.pages && <p className="mb-2 text-sm text-muted-foreground">{t("search.pages")}: {result.pages}</p>}
+                {result.pages && (
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    {t("search.pages")}: {result.pages}
+                  </p>
+                )}
                 <p className="text-sm leading-relaxed">
-                  {result.text.length > 300 ? result.text.slice(0, 300) + "..." : result.text}
+                  {result.text.length > 300
+                    ? result.text.slice(0, 300) + "..."
+                    : result.text}
                 </p>
                 {result.gcs_url && (
                   <a

@@ -1,6 +1,6 @@
 {
   "header": {
-    "logoTitle": "Simple RAG Books",
+    "logoTitle": "E-Kutubxona",
     "logoSubtitle": "Kutubxonangizni qidiring",
     "browse": "Ko'rish",
     "saved": "Saqlangan",
@@ -25,11 +25,12 @@
     "semanticDescription": "Kitob ichidagi matnda AI semantik qidiruv.",
     "textDescription": "Kutubxonangiz bo'ylab nomi/muallif bo'yicha qidirish.",
     "searchPlaceholder": "Kitoblarni qidirish...",
+    "search": "Qidirish",
     "text": "Matn",
     "ai": "AI",
     "loading": "Yuklanmoqda...",
     "noMatches": "Mos kelishlar yo'q",
-    "noBooksFound": "\"{query}\" uchun kitoblar topilmadi.",
+    "noBooksFound": "\"{{query}}\" uchun kitoblar topilmadi.",
     "foundBooks": "ta kitob topildi",
     "foundResults": "ta natija topildi",
     "unknownBook": "Noma'lum kitob",
@@ -60,12 +61,12 @@
     "noCover": "Muqova yo'q"
   },
   "footer": {
-    "title": "Simple RAG Books",
+    "title": "E-Kutubxona",
     "subtitle": "Kutubxonangizni qidiring va o'rganing",
     "search": "Qidirish"
   },
   "metadata": {
-    "title": "Simple RAG Books",
+    "title": "E-Kutubxona",
     "description": "Kutubxonangizni qidiring va o'rganing"
   },
   "language": {

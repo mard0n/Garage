@@ -1,6 +1,6 @@
 {
   "header": {
-    "logoTitle": "Simple RAG Books",
+    "logoTitle": "E-Kutubxona",
     "logoSubtitle": "Search your library",
     "browse": "Browse",
     "saved": "Saved",
@@ -26,11 +26,12 @@
     "semanticDescription": "AI semantic search inside book content.",
     "textDescription": "Title/author search across your library.",
     "searchPlaceholder": "Search books…",
+    "search": "Search",
     "text": "Text",
     "ai": "AI",
     "loading": "Loading…",
     "noMatches": "No matches",
-    "noBooksFound": "No books found for \"{query}\".",
+    "noBooksFound": "No books found for \"{{query}}\".",
     "foundBooks": "books found",
     "foundResults": "results found",
     "unknownBook": "Unknown Book",
@@ -61,7 +62,7 @@
     "noCover": "No cover"
   },
   "footer": {
-    "title": "Simple RAG Books",
+    "title": "E-Kutubxona",
     "subtitle": "Search and explore your library",
     "search": "Search"
   },
