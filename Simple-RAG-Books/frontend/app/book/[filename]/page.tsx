@@ -2,7 +2,6 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, BookOpen, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,6 @@ interface BookPageProps {
 
 export default function BookPage({ params }: BookPageProps) {
   const resolvedParams = use(params);
-  const router = useRouter();
   const book: Book | null = getBookByFilename(resolvedParams.filename);
 
   if (!book) {
@@ -79,7 +77,7 @@ export default function BookPage({ params }: BookPageProps) {
             </p>
           )}
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 pt-2">
             {book.pdf_gcs_url && (
               <Button asChild>
                 <a href={book.pdf_gcs_url} target="_blank" rel="noopener noreferrer">
@@ -88,16 +86,12 @@ export default function BookPage({ params }: BookPageProps) {
                 </a>
               </Button>
             )}
-            <Button variant="secondary" onClick={() => router.back()}>
-              <ArrowLeft className="mr-2 size-4" aria-hidden="true" />
-              Back
-            </Button>
           </div>
         </div>
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-6 pt-4">
           <h2 className="text-lg font-medium">About this book</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             This book is available in your digital library. Use “Read PDF” to open the full
