@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { BookOpen, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { getSuggestions, type Book } from "@/lib/api";
+import { getAllBooks, getSuggestions, type Book } from "@/lib/api";
 
 export default function Home() {
   const router = useRouter();
@@ -16,6 +17,20 @@ export default function Home() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const categories = useMemo(() => {
+    const grouped = getAllBooks().reduce<Record<string, Book[]>>((acc, book) => {
+      const category = book.category || "Uncategorized";
+      acc[category] = [...(acc[category] || []), book];
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([name, books]) => ({
+        name,
+        books: books.sort((a, b) => a.title.localeCompare(b.title)),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -73,7 +88,7 @@ export default function Home() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div className="rounded-xl border bg-card p-6 sm:p-10">
         <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
           <div className="mb-4 grid size-12 place-items-center rounded-xl bg-primary text-primary-foreground">
@@ -159,6 +174,71 @@ export default function Home() {
           a text search.
         </div>
       </div>
+
+      <section className="space-y-6">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Browse books</h2>
+            <p className="text-sm text-muted-foreground">
+              {categories.reduce((total, category) => total + category.books.length, 0)} books
+              across {categories.length} categories
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          {categories.map((category) => (
+            <div key={category.name} className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-lg font-semibold tracking-tight">{category.name}</h3>
+                <span className="shrink-0 text-sm text-muted-foreground">
+                  {category.books.length} book{category.books.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                <div className="flex w-max gap-4">
+                  {category.books.map((book) => (
+                    <Link
+                      key={book.filename}
+                      href={`/book/${encodeURIComponent(book.filename)}`}
+                      className="group w-36 shrink-0 sm:w-40"
+                    >
+                      <div className="overflow-hidden rounded-lg border bg-card transition-shadow group-hover:shadow-md">
+                        <div className="relative aspect-[2/3] bg-muted">
+                          {book.thumbnail_gcs_url ? (
+                            <Image
+                              src={book.thumbnail_gcs_url}
+                              alt={book.title}
+                              fill
+                              sizes="160px"
+                              unoptimized
+                              className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                              <BookOpen className="size-5" aria-hidden="true" />
+                              <span className="text-xs">No cover</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-1 p-3">
+                          <h4 className="line-clamp-2 min-h-9 text-sm font-medium leading-tight">
+                            {book.title}
+                          </h4>
+                          <p className="line-clamp-1 text-xs text-muted-foreground">
+                            {book.author}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
