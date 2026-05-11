@@ -3,7 +3,14 @@ from embed_model import reranker
 
 def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
     """Rerank candidates using BGE-Reranker-v2-m3."""
+    if not candidates:
+        return []
+
     pairs = [[query, c["text"]] for c in candidates]
-    scores = reranker.predict(pairs)
+    scores = reranker.compute_score(pairs)
+
+    if isinstance(scores, float):
+        scores = [scores]
+
     ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
     return [{**cand, "rerank_score": float(score)} for cand, score in ranked[:top_n]]

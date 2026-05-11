@@ -61,12 +61,12 @@ def embed_and_upsert(chunks: list[dict]):
 
         print(f"Embedded batch {i // BATCH_SIZE + 1}")
 
-    if not client.collection_exists(collection_name="rag_books_rus"):
+    if not client.collection_exists(collection_name="sample_rag"):
         client.create_collection(
-            collection_name="rag_books_rus",
+            collection_name="sample_rag",
             vectors_config={"dense": VectorParams(size=1024, distance=Distance.COSINE)},
             sparse_vectors_config={"sparse": SparseVectorParams()},
         )
 
-    client.upsert(collection_name="rag_books_rus", points=points)
+    client.upsert(collection_name="sample_rag", points=points)
     print(f"Upserted {len(points)} points to Qdrant")

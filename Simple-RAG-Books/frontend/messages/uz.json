@@ -1,0 +1,76 @@
+{
+  "header": {
+    "logoTitle": "E-Kutubxona",
+    "logoSubtitle": "Kutubxonangizni qidiring",
+    "browse": "Ko'rish",
+    "saved": "Saqlangan",
+    "signIn": "Kirish"
+  },
+  "home": {
+    "title": "To'g'ri kitobni tez toping",
+    "description": "Kitobni nomi yoki muallifi bo'yicha qidiring, yoki kitob ichidagi matnni AI yordamida qidiring.",
+    "searchPlaceholder": "Kitobni nomi yoki muallifi bo'yicha qidiring...",
+    "search": "Qidirish",
+    "aiSearch": "AI Qidiruv",
+    "tip": "Maslahat: matnli qidiruv uchun Enter tugmasini bosing.",
+    "browseBooks": "Kitoblarni ko'rish",
+    "booksCount": "ta kitob",
+    "categoriesCount": "ta kategoriya",
+    "noCover": "Muqova yo'q",
+    "books": "ta kitob"
+  },
+  "search": {
+    "back": "Orqaga",
+    "title": "Qidirish",
+    "semanticDescription": "Kitob ichidagi matnda AI semantik qidiruv.",
+    "textDescription": "Kutubxonangiz bo'ylab nomi/muallif bo'yicha qidirish.",
+    "searchPlaceholder": "Kitoblarni qidirish...",
+    "search": "Qidirish",
+    "text": "Matn",
+    "ai": "AI",
+    "loading": "Yuklanmoqda...",
+    "noMatches": "Mos kelishlar yo'q",
+    "noBooksFound": "\"{{query}}\" uchun kitoblar topilmadi.",
+    "foundBooks": "ta kitob topildi",
+    "foundResults": "ta natija topildi",
+    "unknownBook": "Noma'lum kitob",
+    "score": "Ball",
+    "pages": "Sahifalar",
+    "viewPdf": "PDFni ko'rish",
+    "noCover": "Muqova yo'q"
+  },
+  "saved": {
+    "title": "Mening saqlangan kitoblarim",
+    "loading": "Yuklanmoqda...",
+    "signInPrompt": "Saqlangan kitoblaringizni ko'rish va saqlash uchun tizimga kiring.",
+    "signIn": "Kirish",
+    "emptyPrompt": "Siz hali hech qanday kitob saqlamadingiz. Kitoblarni ko'ring va \"Saqlash\" tugmasini bosing.",
+    "browseBooks": "Kitoblarni ko'rish",
+    "savedCount": "ta saqlangan kitob",
+    "noCover": "Muqova yo'q"
+  },
+  "book": {
+    "backToSearch": "Qidirishga qaytish",
+    "notFound": "Kitob topilmadi",
+    "category": "Kategoriya",
+    "readPdf": "PDFni o'qish",
+    "save": "Saqlash",
+    "saved": "Saqlangan",
+    "aboutTitle": "Kitob haqida",
+    "aboutDescription": "Bu kitob raqamli kutubxonangizda mavjud. To'liq hujjatni yangi bo'limda ochish uchun \"PDFni o'qish\" tugmasini bosing.",
+    "noCover": "Muqova yo'q"
+  },
+  "footer": {
+    "title": "E-Kutubxona",
+    "subtitle": "Kutubxonangizni qidiring va o'rganing",
+    "search": "Qidirish"
+  },
+  "metadata": {
+    "title": "E-Kutubxona",
+    "description": "Kutubxonangizni qidiring va o'rganing"
+  },
+  "language": {
+    "switch": "Tilni o'zgartirish",
+    "current": "Hozirgi til"
+  }
+}

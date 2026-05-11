@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -125,7 +126,13 @@ async def search(req: SearchRequest):
         return SearchResponse(query=req.query, results=results)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_detail = {
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+        print(f"[serve_search_api] ERROR: {error_detail}")
+        raise HTTPException(status_code=500, detail=json.dumps(error_detail))
 
 
 @app.get("/books")
