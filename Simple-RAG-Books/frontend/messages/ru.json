@@ -1,0 +1,76 @@
+{
+  "header": {
+    "logoTitle": "Simple RAG Books",
+    "logoSubtitle": "Поиск в вашей библиотеке",
+    "browse": "Обзор",
+    "saved": "Сохранённые",
+    "signIn": "Войти"
+  },
+  "home": {
+    "title": "Найдите нужную книгу быстро",
+    "description": "Поиск по названию или автору, или используйте ИИ для поиска по содержимому книг.",
+    "searchPlaceholder": "Поиск книг по названию или автору…",
+    "search": "Поиск",
+    "aiSearch": "ИИ Поиск",
+    "tip": "Совет: нажмите Enter для текстового поиска.",
+    "enterKey": "Enter",
+    "browseBooks": "Обзор книг",
+    "booksCount": "книг",
+    "categoriesCount": "категорий",
+    "noCover": "Нет обложки",
+    "books": "книг"
+  },
+  "search": {
+    "back": "Назад",
+    "title": "Поиск",
+    "semanticDescription": "ИИ семантический поиск по содержимому книг.",
+    "textDescription": "Поиск по названию/автору в вашей библиотеке.",
+    "searchPlaceholder": "Поиск книг…",
+    "text": "Текст",
+    "ai": "ИИ",
+    "loading": "Загрузка...",
+    "noMatches": "Совпадений нет",
+    "noBooksFound": "Книги по запросу \"{query}\" не найдены.",
+    "foundBooks": "книг найдено",
+    "foundResults": "результатов найдено",
+    "unknownBook": "Неизвестная книга",
+    "score": "Оценка",
+    "pages": "Страницы",
+    "viewPdf": "Смотреть PDF",
+    "noCover": "Нет обложки"
+  },
+  "saved": {
+    "title": "Мои сохранённые книги",
+    "loading": "Загрузка...",
+    "signInPrompt": "Войдите, чтобы сохранять и просматривать сохранённые книги.",
+    "signIn": "Войти",
+    "emptyPrompt": "Вы ещё не сохранили ни одной книги. Обзор книг и нажмите \"Сохранить\".",
+    "browseBooks": "Обзор книг",
+    "savedCount": "сохранённых книг",
+    "noCover": "Нет обложки"
+  },
+  "book": {
+    "backToSearch": "Вернуться к поиску",
+    "notFound": "Книга не найдена",
+    "category": "Категория",
+    "readPdf": "Читать PDF",
+    "save": "Сохранить",
+    "saved": "Сохранено",
+    "aboutTitle": "О книге",
+    "aboutDescription": "Эта книга доступна в вашей цифровой библиотеке. Используйте \"Читать PDF\", чтобы открыть полный документ.",
+    "noCover": "Нет обложки"
+  },
+  "footer": {
+    "title": "Simple RAG Books",
+    "subtitle": "Поиск и изучение вашей библиотеки",
+    "search": "Поиск"
+  },
+  "metadata": {
+    "title": "Simple RAG Books",
+    "description": "Поиск и изучение вашей коллекции книг"
+  },
+  "language": {
+    "switch": "Изменить язык",
+    "current": "Текущий язык"
+  }
+}

@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { textSearch, semanticSearch, type Book, type SearchResponse } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string; type?: string }>;
 }
 
 export default function SearchPage({ searchParams }: SearchPageProps) {
+  const { t } = useTranslation();
   const params = use(searchParams);
   const router = useRouter();
   const query = params.q || "";
@@ -82,13 +84,13 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
             className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back
+            {t("search.back")}
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("search.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {searchType === "semantic"
-              ? "AI semantic search inside book content."
-              : "Title/author search across your library."}
+              ? t("search.semanticDescription")
+              : t("search.textDescription")}
           </p>
         </div>
       </div>
@@ -100,13 +102,13 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search books…"
+            placeholder={t("search.searchPlaceholder")}
             className="pl-9"
           />
         </div>
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={!searchInput.trim()}>
-            Search
+            {t("search.search")}
           </Button>
           <div className="flex overflow-hidden rounded-md border border-border">
             <button
@@ -119,7 +121,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
               }`}
             >
               <BookOpen className="size-4" aria-hidden="true" />
-              Text
+              {t("search.text")}
             </button>
             <button
               type="button"
@@ -131,7 +133,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
               }`}
             >
               <Sparkles className="size-4" aria-hidden="true" />
-              AI
+              {t("search.ai")}
             </button>
           </div>
         </div>
@@ -140,7 +142,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
       {loading && (
         <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Loading…
+          {t("search.loading")}
         </div>
       )}
 
@@ -150,8 +152,8 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
             <BookOpen className="size-6 text-muted-foreground" aria-hidden="true" />
-            <div className="font-medium">No matches</div>
-            <div className="text-sm text-muted-foreground">No books found for &quot;{query}&quot;.</div>
+            <div className="font-medium">{t("search.noMatches")}</div>
+            <div className="text-sm text-muted-foreground">{t("search.noBooksFound", { query })}</div>
           </CardContent>
         </Card>
       )}
@@ -159,7 +161,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
       {!loading && !error && searchType === "text" && books.length > 0 && (
         <>
           <p className="text-sm text-muted-foreground">
-            Found {books.length} book{books.length !== 1 ? "s" : ""}
+            {books.length} {t("search.foundBooks")}
           </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {books.map((book) => (
@@ -176,10 +178,10 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
                         className="object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <BookOpen className="size-5" aria-hidden="true" />
-                        <span className="text-xs">No cover</span>
-                      </div>
+<div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <BookOpen className="size-5" aria-hidden="true" />
+                          <span className="text-xs">{t("search.noCover")}</span>
+                        </div>
                     )}
                   </div>
                   <CardContent className="space-y-1 p-3">
@@ -196,19 +198,18 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
       {!loading && !error && searchType === "semantic" && semanticResults && (
         <>
           <p className="text-sm text-muted-foreground">
-            Found {semanticResults.results.length} result
-            {semanticResults.results.length !== 1 ? "s" : ""}
+            {semanticResults.results.length} {t("search.foundResults")}
           </p>
           <div className="space-y-4">
             {semanticResults.results.map((result, index) => (
               <Card key={index} className="p-4">
                 <div className="mb-2 flex items-start justify-between gap-4">
-                  <h3 className="font-medium">{result.book_title || "Unknown Book"}</h3>
+                  <h3 className="font-medium">{result.book_title || t("search.unknownBook")}</h3>
                   <span className="shrink-0 text-sm text-muted-foreground">
-                    Score: {result.score.toFixed(2)}
+                    {t("search.score")}: {result.score.toFixed(2)}
                   </span>
                 </div>
-                {result.pages && <p className="mb-2 text-sm text-muted-foreground">Pages: {result.pages}</p>}
+                {result.pages && <p className="mb-2 text-sm text-muted-foreground">{t("search.pages")}: {result.pages}</p>}
                 <p className="text-sm leading-relaxed">
                   {result.text.length > 300 ? result.text.slice(0, 300) + "..." : result.text}
                 </p>
@@ -219,7 +220,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
                     rel="noopener noreferrer"
                     className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline"
                   >
-                    View PDF
+                    {t("search.viewPdf")}
                     <ExternalLink className="size-4" aria-hidden="true" />
                   </a>
                 )}

@@ -8,8 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSavedBooks } from "@/hooks/use-saved-books";
 import { SignInButton, useUser } from "@clerk/nextjs";
+import { useTranslation } from "react-i18next";
 
 export default function SavedPage() {
+  const { t } = useTranslation();
   const { savedBooks, isSignedIn, isLoaded } = useSavedBooks();
   const { isLoaded: userLoaded } = useUser();
 
@@ -33,9 +35,9 @@ export default function SavedPage() {
   if (!isLoaded || !userLoaded) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-semibold tracking-tight">My Saved Books</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("saved.title")}</h1>
         <div className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Loading...</div>
+          <div className="text-muted-foreground">{t("saved.loading")}</div>
         </div>
       </div>
     );
@@ -44,13 +46,13 @@ export default function SavedPage() {
   if (!isSignedIn) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-semibold tracking-tight">My Saved Books</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("saved.title")}</h1>
         <Card className="bg-muted/50">
           <CardContent className="flex flex-col items-center gap-4 p-10 text-center">
             <BookOpen className="size-10 text-muted-foreground" aria-hidden="true" />
-            <p className="text-muted-foreground">Sign in to save and view your saved books.</p>
+            <p className="text-muted-foreground">{t("saved.signInPrompt")}</p>
             <SignInButton mode="modal">
-              <Button>Sign In</Button>
+              <Button>{t("saved.signIn")}</Button>
             </SignInButton>
           </CardContent>
         </Card>
@@ -61,15 +63,15 @@ export default function SavedPage() {
   if (savedBooks.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-semibold tracking-tight">My Saved Books</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("saved.title")}</h1>
         <Card className="bg-muted/50">
           <CardContent className="flex flex-col items-center gap-4 p-10 text-center">
             <BookOpen className="size-10 text-muted-foreground" aria-hidden="true" />
             <p className="text-muted-foreground">
-              You haven&apos;t saved any books yet. Browse books and click &quot;Save&quot; to add them here.
+              {t("saved.emptyPrompt")}
             </p>
             <Button asChild>
-              <Link href="/">Browse Books</Link>
+              <Link href="/">{t("saved.browseBooks")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -80,9 +82,9 @@ export default function SavedPage() {
   return (
     <div className="space-y-10">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">My Saved Books</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("saved.title")}</h1>
         <p className="text-muted-foreground">
-          {savedBooks.length} saved book{savedBooks.length !== 1 ? "s" : ""}
+          {savedBooks.length} {t("saved.savedCount")}
         </p>
       </div>
 
@@ -116,10 +118,10 @@ export default function SavedPage() {
                             className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                           />
                         ) : (
-                          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                            <BookOpen className="size-5" aria-hidden="true" />
-                            <span className="text-xs">No cover</span>
-                          </div>
+<div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                              <BookOpen className="size-5" aria-hidden="true" />
+                              <span className="text-xs">{t("saved.noCover")}</span>
+                            </div>
                         )}
                       </div>
                       <div className="space-y-1 p-3">

@@ -8,8 +8,10 @@ import { BookOpen, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getAllBooks, getSuggestions, type Book } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Book[]>([]);
@@ -136,10 +138,10 @@ export default function Home() {
             <BookOpen className="size-6" aria-hidden="true" />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Find the right book, fast
+            {t("home.title")}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Search by title or author, or use AI to search inside book content.
+            {t("home.description")}
           </p>
         </div>
 
@@ -153,7 +155,7 @@ export default function Home() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
-                placeholder="Search books by title or author…"
+                placeholder={t("home.searchPlaceholder")}
                 className="h-11 pl-9 text-base"
                 role="combobox"
                 aria-expanded={showSuggestions}
@@ -171,7 +173,7 @@ export default function Home() {
             <div className="flex gap-2">
               <Button type="submit" size="lg" disabled={!query.trim()}>
                 <Search className="mr-2 size-4" aria-hidden="true" />
-                Search
+                {t("home.search")}
               </Button>
               <Button
                 type="button"
@@ -181,7 +183,7 @@ export default function Home() {
                 disabled={!query.trim()}
               >
                 <Sparkles className="mr-2 size-4" aria-hidden="true" />
-                AI Search
+                {t("home.aiSearch")}
               </Button>
             </div>
           </form>
@@ -229,19 +231,16 @@ export default function Home() {
         </div>
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          Tip: press{" "}
-          <kbd className="rounded bg-muted px-1.5 py-0.5 text-xs">Enter</kbd> to run
-          a text search.
+          {t("home.tip")}
         </div>
       </div>
 
       <section className="space-y-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Browse books</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">{t("home.browseBooks")}</h2>
             <p className="text-sm text-muted-foreground">
-              {categories.reduce((total, category) => total + category.books.length, 0)} books
-              across {categories.length} categories
+              {categories.reduce((total, category) => total + category.books.length, 0)} {t("home.books.one")} {t("home.categoriesCount")}
             </p>
           </div>
         </div>
@@ -252,7 +251,7 @@ export default function Home() {
               <div className="flex items-center justify-between gap-4">
                 <h3 className="text-lg font-semibold tracking-tight">{category.name}</h3>
                 <span className="shrink-0 text-sm text-muted-foreground">
-                  {category.books.length} book{category.books.length !== 1 ? "s" : ""}
+                  {category.books.length} {t("home.books")}
                 </span>
               </div>
 
@@ -278,7 +277,7 @@ export default function Home() {
                           ) : (
                             <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
                               <BookOpen className="size-5" aria-hidden="true" />
-                              <span className="text-xs">No cover</span>
+                              <span className="text-xs">{t("home.noCover")}</span>
                             </div>
                           )}
                         </div>

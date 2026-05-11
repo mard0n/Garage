@@ -9,12 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getBookByFilename, type Book } from "@/lib/api";
 import { useSavedBooks } from "@/hooks/use-saved-books";
 import { SignInButton, useUser } from "@clerk/nextjs";
+import { useTranslation } from "react-i18next";
 
 interface BookPageProps {
   params: Promise<{ filename: string }>;
 }
 
 export default function BookPage({ params }: BookPageProps) {
+  const { t } = useTranslation();
   const resolvedParams = use(params);
   const book: Book | null = getBookByFilename(resolvedParams.filename);
   const { isSignedIn, isBookSaved, toggleBook } = useSavedBooks();
@@ -25,11 +27,11 @@ export default function BookPage({ params }: BookPageProps) {
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
           <BookOpen className="size-6 text-muted-foreground" aria-hidden="true" />
-          <div className="text-destructive font-medium">Book not found</div>
+          <div className="text-destructive font-medium">{t("book.notFound")}</div>
           <Button asChild variant="secondary" size="sm">
             <Link href="/">
               <ArrowLeft className="mr-2 size-4" aria-hidden="true" />
-              Back
+              {t("book.backToSearch")}
             </Link>
           </Button>
         </CardContent>
@@ -44,7 +46,7 @@ export default function BookPage({ params }: BookPageProps) {
         className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to search
+        {t("book.backToSearch")}
       </Link>
 
       <div className="flex flex-col gap-6 sm:flex-row">
@@ -62,7 +64,7 @@ export default function BookPage({ params }: BookPageProps) {
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
                 <BookOpen className="size-6" aria-hidden="true" />
-                <span className="text-sm">No cover</span>
+                <span className="text-sm">{t("book.noCover")}</span>
               </div>
             )}
           </div>
@@ -76,7 +78,7 @@ export default function BookPage({ params }: BookPageProps) {
 
           {book.category && (
             <p className="text-sm">
-              <span className="text-muted-foreground">Category: </span>
+              <span className="text-muted-foreground">{t("book.category")}: </span>
               {book.category}
             </p>
           )}
@@ -85,30 +87,30 @@ export default function BookPage({ params }: BookPageProps) {
             {book.pdf_gcs_url && (
               <Button asChild>
                 <a href={book.pdf_gcs_url} target="_blank" rel="noopener noreferrer">
-                  Read PDF
+                  {t("book.readPdf")}
                   <ExternalLink className="ml-2 size-4" aria-hidden="true" />
                 </a>
               </Button>
             )}
             {isLoaded && isSignedIn && (
-              <Button
-                type="button"
-                variant={isBookSaved(book.filename) ? "secondary" : "outline"}
-                size="lg"
-                onClick={() => toggleBook(book)}
-              >
-                <Bookmark
-                  className={`mr-2 size-4 ${isBookSaved(book.filename) ? "fill-current" : ""}`}
-                  aria-hidden="true"
-                />
-                {isBookSaved(book.filename) ? "Saved" : "Save"}
-              </Button>
+<Button
+                  type="button"
+                  variant={isBookSaved(book.filename) ? "secondary" : "outline"}
+                  size="lg"
+                  onClick={() => toggleBook(book)}
+                >
+                  <Bookmark
+                    className={`mr-2 size-4 ${isBookSaved(book.filename) ? "fill-current" : ""}`}
+                    aria-hidden="true"
+                  />
+                  {isBookSaved(book.filename) ? t("book.saved") : t("book.save")}
+                </Button>
             )}
             {isLoaded && !isSignedIn && (
               <SignInButton mode="modal">
                 <Button type="button" variant="outline" size="lg">
                   <Bookmark className="mr-2 size-4" aria-hidden="true" />
-                  Save
+                  {t("book.save")}
                 </Button>
               </SignInButton>
             )}
@@ -116,12 +118,11 @@ export default function BookPage({ params }: BookPageProps) {
         </div>
       </div>
 
-      <Card>
+<Card>
         <CardContent className="p-6 pt-4">
-          <h2 className="text-lg font-medium">About this book</h2>
+          <h2 className="text-lg font-medium">{t("book.aboutTitle")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            This book is available in your digital library. Use “Read PDF” to open the full
-            document in a new tab.
+            {t("book.aboutDescription")}
           </p>
         </CardContent>
       </Card>
