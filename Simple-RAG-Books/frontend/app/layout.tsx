@@ -3,6 +3,7 @@ import { Inter, Literata } from "next/font/google";
 import "./globals.css";
 
 import { SiteHeader } from "@/components/site-header";
+import { Providers } from "@/components/providers";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -31,11 +32,12 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} ${fontSerif.variable} min-h-dvh bg-background font-sans text-foreground antialiased`}
       >
-        <div className="relative flex min-h-dvh flex-col">
-          <SiteHeader />
-          <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-            {children}
-          </main>
+        <Providers>
+          <div className="relative flex min-h-dvh flex-col">
+            <SiteHeader />
+            <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+              {children}
+            </main>
           <footer className="border-t border-border bg-background/60">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
               <div className="flex items-center gap-2">
@@ -50,7 +52,8 @@ export default function RootLayout({
               </div>
             </div>
           </footer>
-        </div>
+          </div>
+        </Providers>
       </body>
     </html>
   );

@@ -3,10 +3,12 @@
 import { use } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, BookOpen, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpen, ExternalLink, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getBookByFilename, type Book } from "@/lib/api";
+import { useSavedBooks } from "@/hooks/use-saved-books";
+import { SignInButton, useUser } from "@clerk/nextjs";
 
 interface BookPageProps {
   params: Promise<{ filename: string }>;
@@ -15,6 +17,8 @@ interface BookPageProps {
 export default function BookPage({ params }: BookPageProps) {
   const resolvedParams = use(params);
   const book: Book | null = getBookByFilename(resolvedParams.filename);
+  const { isSignedIn, isBookSaved, toggleBook } = useSavedBooks();
+  const { isLoaded } = useUser();
 
   if (!book) {
     return (
@@ -85,6 +89,28 @@ export default function BookPage({ params }: BookPageProps) {
                   <ExternalLink className="ml-2 size-4" aria-hidden="true" />
                 </a>
               </Button>
+            )}
+            {isLoaded && isSignedIn && (
+              <Button
+                type="button"
+                variant={isBookSaved(book.filename) ? "secondary" : "outline"}
+                size="lg"
+                onClick={() => toggleBook(book)}
+              >
+                <Bookmark
+                  className={`mr-2 size-4 ${isBookSaved(book.filename) ? "fill-current" : ""}`}
+                  aria-hidden="true"
+                />
+                {isBookSaved(book.filename) ? "Saved" : "Save"}
+              </Button>
+            )}
+            {isLoaded && !isSignedIn && (
+              <SignInButton mode="modal">
+                <Button type="button" variant="outline" size="lg">
+                  <Bookmark className="mr-2 size-4" aria-hidden="true" />
+                  Save
+                </Button>
+              </SignInButton>
             )}
           </div>
         </div>

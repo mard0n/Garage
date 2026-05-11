@@ -18,8 +18,11 @@ export default function Home() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const allBooks = getAllBooks();
+
   const categories = useMemo(() => {
-    const grouped = getAllBooks().reduce<Record<string, Book[]>>((acc, book) => {
+    const grouped = allBooks.reduce<Record<string, Book[]>>((acc, book) => {
       const category = book.category || "Uncategorized";
       acc[category] = [...(acc[category] || []), book];
       return acc;
@@ -31,6 +34,7 @@ export default function Home() {
         books: books.sort((a, b) => a.title.localeCompare(b.title)),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -3,12 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Library, LogIn } from "lucide-react";
+import { BookOpen, Library, LogIn, Bookmark } from "lucide-react";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
 import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { isSignedIn } = useUser();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -29,15 +31,29 @@ export function SiteHeader() {
           <Button asChild variant={pathname === "/" ? "secondary" : "ghost"} size="sm">
             <Link href="/" className="gap-2">
               <Library className="size-4" aria-hidden="true" />
-              <span>My Library</span>
+              <span>Browse</span>
             </Link>
           </Button>
+          {isSignedIn && (
+            <Button asChild variant={pathname === "/saved" ? "secondary" : "ghost"} size="sm">
+              <Link href="/saved" className="gap-2">
+                <Bookmark className="size-4" aria-hidden="true" />
+                <span>Saved</span>
+              </Link>
+            </Button>
+          )}
         </nav>
 
-        <Button type="button" variant="outline" size="sm" className="gap-2">
-          <LogIn className="size-4" aria-hidden="true" />
-          <span>Sign in</span>
-        </Button>
+        {isSignedIn ? (
+          <UserButton />
+        ) : (
+          <SignInButton mode="modal">
+            <Button type="button" variant="outline" size="sm" className="gap-2">
+              <LogIn className="size-4" aria-hidden="true" />
+              <span>Sign in</span>
+            </Button>
+          </SignInButton>
+        )}
       </div>
     </header>
   );
