@@ -14,6 +14,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Book[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,11 +43,13 @@ export default function Home() {
         const results = getSuggestions(query);
         setSuggestions(results);
         setShowSuggestions(results.length > 0);
+        setActiveSuggestionIndex(-1);
       }, 150);
     } else {
       debounceRef.current = setTimeout(() => {
         setSuggestions([]);
         setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
       }, 0);
     }
 
@@ -61,6 +64,7 @@ export default function Home() {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
       }
     };
 
@@ -84,12 +88,45 @@ export default function Home() {
   const handleSuggestionClick = (book: Book) => {
     setQuery(book.title);
     setShowSuggestions(false);
+    setActiveSuggestionIndex(-1);
     router.push(`/book/${encodeURIComponent(book.filename)}`);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveSuggestionIndex((current) => (current + 1) % suggestions.length);
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveSuggestionIndex((current) =>
+        current <= 0 ? suggestions.length - 1 : current - 1
+      );
+      return;
+    }
+
+    if (e.key === "Enter" && activeSuggestionIndex >= 0) {
+      e.preventDefault();
+      handleSuggestionClick(suggestions[activeSuggestionIndex]);
+      return;
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setShowSuggestions(false);
+      setActiveSuggestionIndex(-1);
+    }
   };
 
   return (
     <div className="space-y-10">
-      <div className="rounded-xl border bg-card p-6 sm:p-10">
+      <div className="rounded-xl border border-border bg-card p-6 sm:p-10">
         <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
           <div className="mb-4 grid size-12 place-items-center rounded-xl bg-primary text-primary-foreground">
             <BookOpen className="size-6" aria-hidden="true" />
@@ -111,8 +148,17 @@ export default function Home() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Search books by title or author…"
                 className="h-11 pl-9 text-base"
+                role="combobox"
+                aria-expanded={showSuggestions}
+                aria-controls="book-suggestions"
+                aria-activedescendant={
+                  activeSuggestionIndex >= 0
+                    ? `book-suggestion-${activeSuggestionIndex}`
+                    : undefined
+                }
                 onFocus={() => {
                   if (suggestions.length > 0) setShowSuggestions(true);
                 }}
@@ -137,12 +183,22 @@ export default function Home() {
           </form>
 
           {showSuggestions && (
-            <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
-              {suggestions.map((book) => (
+            <div
+              id="book-suggestions"
+              role="listbox"
+              className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md"
+            >
+              {suggestions.map((book, index) => (
                 <button
                   key={book.filename}
+                  id={`book-suggestion-${index}`}
+                  role="option"
+                  aria-selected={activeSuggestionIndex === index}
                   onClick={() => handleSuggestionClick(book)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+                  onMouseEnter={() => setActiveSuggestionIndex(index)}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent ${
+                    activeSuggestionIndex === index ? "bg-accent" : ""
+                  }`}
                 >
                   {book.thumbnail_gcs_url ? (
                     <Image
@@ -204,7 +260,7 @@ export default function Home() {
                       href={`/book/${encodeURIComponent(book.filename)}`}
                       className="group w-36 shrink-0 sm:w-40"
                     >
-                      <div className="overflow-hidden rounded-lg border bg-card transition-shadow group-hover:shadow-md">
+                      <div className="overflow-hidden rounded-lg border border-border bg-card transition-shadow group-hover:shadow-md">
                         <div className="relative aspect-[2/3] bg-muted">
                           {book.thumbnail_gcs_url ? (
                             <Image

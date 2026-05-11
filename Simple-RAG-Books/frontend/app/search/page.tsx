@@ -108,7 +108,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
           <Button type="submit" size="sm" disabled={!searchInput.trim()}>
             Search
           </Button>
-          <div className="flex overflow-hidden rounded-md border">
+          <div className="flex overflow-hidden rounded-md border border-border">
             <button
               type="button"
               onClick={() => toggleSearchType("text")}
