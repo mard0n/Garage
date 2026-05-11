@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const RUNPOD_URL = process.env.RUNPOD_URL || "http://localhost:8000";
-const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,18 +12,17 @@ export async function POST(request: NextRequest) {
       top_n: body.top_n || 10,
     };
 
-    const res = await fetch(`${RUNPOD_URL}/search`, {
+    const res = await fetch(`${API_URL}/search`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${RUNPOD_API_KEY}`,
       },
       body: JSON.stringify(searchBody),
     });
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: `RunPod error: ${res.statusText}` },
+        { error: `API error: ${res.statusText}` },
         { status: res.status }
       );
     }

@@ -25,7 +25,7 @@ def get_model():
     return model
 
 
-from query_pipeline import hybrid_search, rerank
+from query_pipeline import hybrid_search  # rerank disabled for CPU
 
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
 
@@ -93,8 +93,10 @@ async def search(req: SearchRequest):
         candidates = hybrid_search(output, top_k=20)
         print(f"[serve_search_api] Found {len(candidates)} candidates")
 
-        print("[serve_search_api] Reranking results...")
-        raw_results = rerank(req.query, candidates, top_n=req.top_n)
+        # Skip reranking on CPU (FlagReranker has GPU-specific bug)
+        # TODO: Fix reranking for CPU
+        print("[serve_search_api] Skipping reranking (CPU mode)...")
+        raw_results = candidates[:req.top_n]
         print(f"[serve_search_api] Returning {len(raw_results)} results")
 
         metadata = load_book_metadata()
