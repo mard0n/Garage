@@ -110,3 +110,35 @@ supervisorctl start rag-api
 - If model errors: Ensure `device='cuda'` in embed_and_upsert.py
 - If Qdrant errors: Verify API key and cluster URL
 - Check server logs: `tail -f server.log`
+
+
+
+## GCS startup plan
+
+Plan to make it work properly:
+1. Create firewall rule to open port 8080:
+gcloud compute firewall-rules create allow-8080 \
+  --allow tcp:8080 \
+  --source-ranges 0.0.0.0/0 \
+  --target-tags rag-api
+2. To keep it running permanently, use supervisor (like you had on RunPod):
+SSH into VM and run:
+# Install supervisor
+sudo apt-get install -y supervisor
+# Create config
+cat > /etc/supervisor/conf.d/rag-api.conf << 'EOF'
+[program:rag-api]
+command = /home/mardonmashrabov/my-rag-pipeline/venv/bin/python /home/mardonmashrabov/my-rag-pipeline/serve_search_api.py
+directory = /home/mardonmashrabov/my-rag-pipeline
+user = mardonmashrabov
+environment = HOME="/home/mardonmashrabov"
+autostart = true
+autorestart = true
+stdout_logfile = /home/mardonmashrabov/my-rag-pipeline/server.log
+stderr_logfile = /home/mardonmashrabov/my-rag-pipeline/error.log
+EOF
+# Start
+sudo supervisorctl start rag-api
+3. Update frontend to use the new IP
+In frontend/.env.local:
+NEXT_PUBLIC_API_URL=http://34.66.172.96:8080
