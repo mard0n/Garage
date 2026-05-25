@@ -15,13 +15,12 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { isSignedIn } = useUser();
   const [isLangOpen, setIsLangOpen] = React.useState(false);
-  const [currentLocale, setCurrentLocale] = React.useState(() => {
-    if (typeof window !== "undefined") {
-      const match = document.cookie.match(new RegExp("(^| )locale=([^;]+)"));
-      return match ? match[2] : "uz";
-    }
-    return "uz";
-  });
+  const [currentLocale, setCurrentLocale] = React.useState("uz");
+
+  React.useEffect(() => {
+    const match = document.cookie.match(new RegExp("(^| )locale=([^;]+)"));
+    if (match) setCurrentLocale(match[2]);
+  }, []);
 
   const handleLocaleChange = (locale: string) => {
     // eslint-disable-next-line react-hooks/immutability
@@ -73,7 +72,7 @@ export function SiteHeader() {
             className="gap-2"
           >
             <Globe className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{localeFlags[currentLocale]}</span>
+            <span suppressHydrationWarning className="hidden sm:inline">{localeFlags[currentLocale]}</span>
           </Button>
           {isLangOpen && (
             <div className="absolute right-0 top-full mt-1 w-40 rounded-md border border-border bg-popover p-1 shadow-md">
