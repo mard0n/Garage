@@ -8,7 +8,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from chunk import chunk_document
 
-from embed_and_upsert import embed_and_upsert
+# Uncomment for full pipeline (embed + upsert to Qdrant):
+# from embed_and_upsert import embed_and_upsert
 
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
 OUTPUT_DIR = Path(__file__).parent / "chunks"
@@ -35,7 +36,7 @@ def index_all():
         )
         print("Run upload_pdfs.py first to create it.\n")
 
-    pdf_files = glob.glob(str(DOCUMENTS_DIR / "*.pdf"))
+    pdf_files = glob.glob(str(DOCUMENTS_DIR / "**" / "*.pdf"), recursive=True)
     if not pdf_files:
         print(f"ERROR: No PDF files found in {DOCUMENTS_DIR}")
         sys.exit(1)
@@ -47,10 +48,13 @@ def index_all():
 
     for pdf_path in pdf_files:
         filename = Path(pdf_path).name
-        title = filename.replace(".pdf", "").replace("needsocr", "").strip()
+        title = filename.replace(".pdf", "").strip()
 
-        print(f"[1/3] Chunking: {filename}")
+        print(f"[1/2] Chunking: {filename}")
         chunks = chunk_document(pdf_path, title)
+        if not chunks:
+            print(f"  -> SKIPPED (no chunks produced)")
+            continue
         print(f"  -> {len(chunks)} chunks created")
 
         book_metadata = metadata.get(filename, {})
@@ -63,19 +67,28 @@ def index_all():
 
         all_chunks.extend(chunks)
 
-    print(f"\n[2/3] Total chunks: {len(all_chunks)}")
+        book_dir = OUTPUT_DIR / filename.replace(".pdf", "")
+        book_dir.mkdir(exist_ok=True)
+        for chunk in chunks:
+            idx = chunk["metadata"]["chunk_index"]
+            (book_dir / f"chunk_{idx:04d}.txt").write_text(
+                chunk["text"], encoding="utf-8"
+            )
+        print(f"  -> individual chunks saved to {book_dir}/")
+
+    print(f"\n[2/2] Total chunks: {len(all_chunks)}")
 
     json_path = OUTPUT_DIR / "chunks.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(all_chunks, f, ensure_ascii=False, indent=2)
     print(f"Saved chunks to {json_path}")
 
-    print(f"\n[3/3] Embedding and upserting to Qdrant...")
-    embed_and_upsert(all_chunks)
+    # Uncomment for full pipeline (embed + upsert to Qdrant):
+    # print(f"\nEmbedding and upserting to Qdrant...")
+    # embed_and_upsert(all_chunks)
 
     print("\n=== Indexing Complete ===")
-    print(f"Collection: sample_rag")
-    print(f"Total points: {len(all_chunks)}")
+    print(f"Total chunks: {len(all_chunks)}")
 
 
 if __name__ == "__main__":

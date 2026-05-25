@@ -1,18 +1,13 @@
+import re
+
 import fitz
 from docling.chunking import HybridChunker
 from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.exceptions import ConversionError
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
-
-pipeline_options = PdfPipelineOptions()
-pipeline_options.do_ocr = False
-pipeline_options.do_table_structure = True
-
-converter = DocumentConverter(
-    format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
-)
 
 tokenizer = HuggingFaceTokenizer(
     tokenizer=AutoTokenizer.from_pretrained("BAAI/bge-m3"),
@@ -60,7 +55,28 @@ def is_pdf_scanned_image(file_path: str, threshold: int = 50) -> bool:
     return not has_text
 
 
-def chunk_document(file_path: str) -> list[dict]:
+def clean_text(text: str) -> str:
+    text = re.sub(r'(\w)\s+-\s*(\w)', r'\1\2', text)
+    text = re.sub(r'(\w)\s*-\s+(\w)', r'\1\2', text)
+
+    text = re.sub(r'(?<=\w) \. (?=\w)', '.', text)
+
+    text = re.sub(r'«\s+', '«', text)
+    text = re.sub(r'\s+»', '»', text)
+    text = re.sub(r'"\s+', '"', text)
+    text = re.sub(r'\s+"', '"', text)
+
+    text = re.sub(r'\s+—\s+', ' — ', text)
+    text = re.sub(r'\s+–\s+', ' – ', text)
+
+    text = re.sub(r' {2,}', ' ', text).strip()
+
+    text = re.sub(r'[ˈʽʼʿ]+', '', text)
+
+    return text
+
+
+def chunk_document(file_path: str, title: str = "") -> list[dict]:
 
     doc = fitz.open(file_path)
     page_count = len(doc)
@@ -72,6 +88,7 @@ def chunk_document(file_path: str) -> list[dict]:
 
     if pipeline_options.do_ocr:
         print(f"  OCR enabled - will process {page_count} pages...")
+        pipeline_options.ocr_options = EasyOcrOptions(lang=["ru", "en"])
 
     converter = DocumentConverter(
         format_options={
@@ -79,7 +96,13 @@ def chunk_document(file_path: str) -> list[dict]:
         }
     )
 
-    result = converter.convert(source=file_path)
+    try:
+        result = converter.convert(source=file_path)
+    except ConversionError as e:
+        print(f"  ERROR: Conversion failed: {e}")
+        print("  Skipping this file.")
+        return []
+
     doc = result.document
     raw_chunks = chunker.chunk(dl_doc=doc)
 
@@ -89,12 +112,12 @@ def chunk_document(file_path: str) -> list[dict]:
 
         results.append(
             {
-                "text": chunker.contextualize(chunk),
+                "text": clean_text(chunker.contextualize(chunk)),
                 "metadata": {
                     "source": file_path,
                     "pages": page_range,
                     "chunk_index": i,
-                    "strategy": "docling_hybrid",
+                    "strategy": "docling_hybrid_text_and_ocr",
                 },
             }
         )
