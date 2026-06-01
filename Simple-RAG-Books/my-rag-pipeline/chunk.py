@@ -1,45 +1,89 @@
 import re
 
 import fitz
-from docling.chunking import HybridChunker
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.exceptions import ConversionError
-from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
-from transformers import AutoTokenizer
+from huggingface_hub import hf_hub_download
+from tokenizers import Tokenizer
 
-tokenizer = HuggingFaceTokenizer(
-    tokenizer=AutoTokenizer.from_pretrained("BAAI/bge-m3"),
-    max_tokens=512,
-)
-
-chunker = HybridChunker(tokenizer=tokenizer)
+tokenizer_path = hf_hub_download(repo_id="BAAI/bge-m3", filename="tokenizer.json")
+_tokenizer = Tokenizer.from_file(tokenizer_path)
+MAX_TOKENS = 512
 
 
-def get_page_range(chunk) -> str:
-    page_start = None
-    page_end = None
-
-    for item in chunk.meta.doc_items:
-        if hasattr(item, "prov") and item.prov:
-            for prov in item.prov:
-                if hasattr(prov, "page_no") and prov.page_no:
-                    if page_start is None:
-                        page_start = prov.page_no
-                    page_end = prov.page_no
-
-    if page_start is None:
-        page_start = 1
-    if page_end is None:
-        page_end = page_start
-
+def get_page_range(chunk_metadata: dict) -> str:
+    pages = chunk_metadata.get("pages", [])
+    if not pages:
+        return "1"
+    page_start = min(pages)
+    page_end = max(pages)
     if page_start == page_end:
-        page_range = str(page_start)
-    else:
-        page_range = f"{page_start}-{page_end}"
+        return str(page_start)
+    return f"{page_start}-{page_end}"
 
-    return page_range
+
+def clean_text(text: str) -> str:
+    text = re.sub(r'(\w)\s+-\s*(\w)', r'\1\2', text)
+    text = re.sub(r'(\w)\s*-\s+(\w)', r'\1\2', text)
+    text = re.sub(r'(?<=\w) \. (?=\w)', '.', text)
+    text = re.sub(r'«\s+', '«', text)
+    text = re.sub(r'\s+»', '»', text)
+    text = re.sub(r'"\s+', '"', text)
+    text = re.sub(r'\s+"', '"', text)
+    text = re.sub(r'\s+—\s+', ' — ', text)
+    text = re.sub(r'\s+–\s+', ' – ', text)
+    text = re.sub(r' {2,}', ' ', text).strip()
+    text = re.sub(r'[ˈʽʼʿ]+', '', text)
+    return text
+
+
+def count_tokens(text: str) -> int:
+    return len(_tokenizer.encode(text).ids)
+
+
+def chunk_text(text: str, title: str = "", page_num: int = 1) -> list[dict]:
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    chunks = []
+    current_text = ""
+    current_tokens = 0
+    chunk_index = 0
+    pages_used = set()
+
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        sentence_tokens = count_tokens(sentence)
+
+        if current_tokens + sentence_tokens > MAX_TOKENS and current_text:
+            chunks.append({
+                "text": clean_text(current_text.strip()),
+                "metadata": {
+                    "source": title,
+                    "pages": get_page_range({"pages": list(pages_used) if pages_used else [page_num]}),
+                    "chunk_index": chunk_index,
+                    "strategy": "pymupdf_sentence_split",
+                },
+            })
+            chunk_index += 1
+            current_text = ""
+            current_tokens = 0
+            pages_used = set()
+
+        current_text += " " + sentence
+        current_tokens += sentence_tokens
+        pages_used.add(page_num)
+
+    if current_text.strip():
+        chunks.append({
+            "text": clean_text(current_text.strip()),
+            "metadata": {
+                "source": title,
+                "pages": get_page_range({"pages": list(pages_used) if pages_used else [page_num]}),
+                "chunk_index": chunk_index,
+                "strategy": "pymupdf_sentence_split",
+            },
+        })
+
+    return chunks
 
 
 def is_pdf_scanned_image(file_path: str, threshold: int = 50) -> bool:
@@ -55,71 +99,26 @@ def is_pdf_scanned_image(file_path: str, threshold: int = 50) -> bool:
     return not has_text
 
 
-def clean_text(text: str) -> str:
-    text = re.sub(r'(\w)\s+-\s*(\w)', r'\1\2', text)
-    text = re.sub(r'(\w)\s*-\s+(\w)', r'\1\2', text)
-
-    text = re.sub(r'(?<=\w) \. (?=\w)', '.', text)
-
-    text = re.sub(r'«\s+', '«', text)
-    text = re.sub(r'\s+»', '»', text)
-    text = re.sub(r'"\s+', '"', text)
-    text = re.sub(r'\s+"', '"', text)
-
-    text = re.sub(r'\s+—\s+', ' — ', text)
-    text = re.sub(r'\s+–\s+', ' – ', text)
-
-    text = re.sub(r' {2,}', ' ', text).strip()
-
-    text = re.sub(r'[ˈʽʼʿ]+', '', text)
-
-    return text
-
-
 def chunk_document(file_path: str, title: str = "") -> list[dict]:
-
     doc = fitz.open(file_path)
-    page_count = len(doc)
+    all_chunks = []
+    chunk_index = 0
+
+    for page_num in range(doc.page_count):
+        page = doc[page_num]
+        text = page.get_text()
+
+        if text and len(text.strip()) > 20:
+            page_chunks = chunk_text(text, title=title, page_num=page_num + 1)
+            for pc in page_chunks:
+                pc["metadata"]["chunk_index"] = chunk_index
+                pc["metadata"]["source"] = title or file_path
+                all_chunks.append(pc)
+                chunk_index += 1
+
     doc.close()
 
-    pipeline_options = PdfPipelineOptions()
-    pipeline_options.do_ocr = is_pdf_scanned_image(file_path)
-    pipeline_options.do_table_structure = True
+    if not all_chunks:
+        print(f"  WARNING: No text extracted from {file_path}")
 
-    if pipeline_options.do_ocr:
-        print(f"  OCR enabled - will process {page_count} pages...")
-        pipeline_options.ocr_options = EasyOcrOptions(lang=["ru", "en"])
-
-    converter = DocumentConverter(
-        format_options={
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-        }
-    )
-
-    try:
-        result = converter.convert(source=file_path)
-    except ConversionError as e:
-        print(f"  ERROR: Conversion failed: {e}")
-        print("  Skipping this file.")
-        return []
-
-    doc = result.document
-    raw_chunks = chunker.chunk(dl_doc=doc)
-
-    results = []
-    for i, chunk in enumerate(raw_chunks):
-        page_range = get_page_range(chunk)
-
-        results.append(
-            {
-                "text": clean_text(chunker.contextualize(chunk)),
-                "metadata": {
-                    "source": file_path,
-                    "pages": page_range,
-                    "chunk_index": i,
-                    "strategy": "docling_hybrid_text_and_ocr",
-                },
-            }
-        )
-
-    return results
+    return all_chunks

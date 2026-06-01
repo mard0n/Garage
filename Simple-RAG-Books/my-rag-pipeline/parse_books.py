@@ -131,7 +131,7 @@ def process_books():
 
     log_step(f"RAG Data path: {RAG_DATA_DIR}")
 
-    categories = ["Литература", "Учебник", "Монография", "Произведение президента"]
+    categories = ["Литература", "Учебник", "Монография", "Произведение президента", "Учебное пособие"]
 
     pdf_files = []
     for category in categories:
@@ -190,6 +190,7 @@ def process_books():
                 "author": author,
                 "category": category,
                 "pdf_gcs_url": pdf_gcs_url,
+                "gcs_url": pdf_gcs_url,
                 "thumbnail_gcs_url": thumbnail_gcs_url,
                 "pdf_blob_name": pdf_blob_name,
                 "thumbnail_blob_name": thumbnail_blob_name if thumbnail_success else None,

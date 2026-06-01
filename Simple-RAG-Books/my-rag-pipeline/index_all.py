@@ -1,3 +1,4 @@
+import argparse
 import glob
 import json
 import os
@@ -8,12 +9,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from chunk import chunk_document
 
-# Uncomment for full pipeline (embed + upsert to Qdrant):
-# from embed_and_upsert import embed_and_upsert
-
 METADATA_FILE = Path(__file__).parent / "book_metadata.json"
 OUTPUT_DIR = Path(__file__).parent / "chunks"
-DOCUMENTS_DIR = Path(__file__).parent / "documents"
+DEFAULT_DATA_DIR = Path(__file__).parent.parent / "RAG Data"
 
 
 def load_book_metadata() -> dict:
@@ -23,9 +21,9 @@ def load_book_metadata() -> dict:
     return {}
 
 
-def index_all():
+def index_all(data_dir: Path, embed: bool = False):
     print("=== RAG Indexing Pipeline ===")
-    print(f"Documents dir: {DOCUMENTS_DIR}")
+    print(f"Data dir: {data_dir}")
     print(f"Output dir: {OUTPUT_DIR}")
     print(f"Metadata file: {METADATA_FILE}\n")
 
@@ -34,11 +32,11 @@ def index_all():
         print(
             "WARNING: book_metadata.json not found. GCS URLs won't be added to chunks."
         )
-        print("Run upload_pdfs.py first to create it.\n")
+        print("Run parse_books.py first to create it.\n")
 
-    pdf_files = glob.glob(str(DOCUMENTS_DIR / "**" / "*.pdf"), recursive=True)
+    pdf_files = glob.glob(str(data_dir / "**" / "*.pdf"), recursive=True)
     if not pdf_files:
-        print(f"ERROR: No PDF files found in {DOCUMENTS_DIR}")
+        print(f"ERROR: No PDF files found in {data_dir}")
         sys.exit(1)
 
     print(f"Found {len(pdf_files)} PDF files to process.\n")
@@ -83,13 +81,23 @@ def index_all():
         json.dump(all_chunks, f, ensure_ascii=False, indent=2)
     print(f"Saved chunks to {json_path}")
 
-    # Uncomment for full pipeline (embed + upsert to Qdrant):
-    # print(f"\nEmbedding and upserting to Qdrant...")
-    # embed_and_upsert(all_chunks)
+    if embed:
+        from embed_and_upsert import embed_and_upsert
+
+        print(f"\nEmbedding and upserting {len(all_chunks)} chunks to Qdrant...")
+        embed_and_upsert(all_chunks)
 
     print("\n=== Indexing Complete ===")
     print(f"Total chunks: {len(all_chunks)}")
 
 
 if __name__ == "__main__":
-    index_all()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--embed", action="store_true", help="Embed and upsert chunks to Qdrant")
+    parser.add_argument(
+        "--data-dir", type=str, default=None,
+        help=f"Path to PDF directory (default: {DEFAULT_DATA_DIR})",
+    )
+    args = parser.parse_args()
+    data_dir = Path(args.data_dir) if args.data_dir else DEFAULT_DATA_DIR
+    index_all(data_dir=data_dir, embed=args.embed)

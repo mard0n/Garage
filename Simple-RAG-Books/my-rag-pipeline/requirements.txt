@@ -1,5 +1,5 @@
 numpy<2
-docling
+docling~=2.24
 FlagEmbedding
 qdrant-client
 requests
