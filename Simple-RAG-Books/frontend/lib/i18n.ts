@@ -13,9 +13,17 @@ const resources = {
   ru: { translation: ru },
 };
 
+const getInitialLocale = () => {
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(new RegExp("(^| )locale=([^;]+)"));
+    return match ? match[2] : "uz";
+  }
+  return "uz";
+};
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: "uz",
+  lng: getInitialLocale(),
   fallbackLng: "uz",
   interpolation: {
     escapeValue: false,

@@ -80,6 +80,7 @@ def upload_pdfs() -> dict[str, str]:
         gcs_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{blob_name}"
         metadata[filename] = {
             "gcs_url": gcs_url,
+            "pdf_gcs_url": gcs_url,
             "local_path": str(pdf_path),
             "blob_name": blob_name,
         }

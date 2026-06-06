@@ -78,7 +78,7 @@ Or run steps individually:
 # Upload PDFs to GCS
 python scripts/upload_pdfs.py
 
-# Index to Qdrant
+# Index to Qdrant (uncomment embed lines in index_all.py first)
 python scripts/index_all.py
 
 # Start API (in background)
@@ -92,7 +92,7 @@ uvicorn scripts.serve_search_api:app --host 0.0.0.0 --port 8000 &
 | `setup_gcp.sh` | Create GCS bucket and service account (run locally) |
 | `deploy.sh` | Deploy codebase to RunPod via SSH |
 | `upload_pdfs.py` | Upload PDFs from `documents/` to GCS |
-| `index_all.py` | Chunk, embed, and upsert documents to Qdrant |
+| `index_all.py` | Chunk documents (uncomment embed lines for full pipeline with Qdrant) |
 | `serve_search_api.py` | FastAPI server for search endpoint |
 | `run_pipeline.sh` | Orchestrator - runs all steps in sequence |
 

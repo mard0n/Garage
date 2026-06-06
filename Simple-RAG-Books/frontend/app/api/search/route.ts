@@ -12,13 +12,18 @@ export async function POST(request: NextRequest) {
       top_n: body.top_n || 10,
     };
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
     const res = await fetch(`${API_URL}/search`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(searchBody),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!res.ok) {
       return NextResponse.json(
