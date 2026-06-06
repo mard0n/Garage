@@ -1,0 +1,10 @@
+{
+  "ankiConnectUrl": "http://localhost:8765",
+  "syncIntervalSec": 60,
+  "saveDebounceMs": 2000,
+  "ignoreDecks": [
+    "Vocabulary",
+    "Vocabulary arabic"
+  ],
+  "vaultRootDeck": "Frontend"
+}
