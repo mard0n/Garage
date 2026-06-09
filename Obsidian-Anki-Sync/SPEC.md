@@ -486,10 +486,11 @@ Store plugin state:
 }
 ```
 
-Storage file:
+Storage:
 
 ```text
-.obsidian/plugins/obsidian-anki-sync/state.json
+Obsidian Plugin API (loadData / saveData)
+→ .obsidian/plugins/obsidian-anki-sync/data.json
 ```
 
 Purpose:
