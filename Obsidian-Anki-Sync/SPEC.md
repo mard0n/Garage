@@ -123,15 +123,15 @@ Backend::SQL::Joins
 
 Card blocks are fenced blocks with backtick fences.
 
-Opening fence: 3 or more backticks followed by `anki` (e.g. ` ```anki `, ```` ````anki ````)
-Closing fence: same number of backticks as the opening fence (e.g. ` ``` `, ```` ```` `)
+Opening fence: 4 backticks followed by `anki` (e.g. ````anki)
+Closing fence: 4 backticks as the opening fence (e.g. ````)
 
-Using more backticks allows nesting code blocks inside cards without conflicts.
+Using 4 backticks allows nesting code blocks inside cards without conflicts.
+3-backtick fences (` ``` `) are not treated as anki cards — they are regular code blocks.
 
-Example with 3-backtick fence:
+Example with 4-backtick fence:
 
-```markdown
-```anki
+````anki
 id: 8b2c9d11-58f2-49a4-9cb9-53b0f73df887
 ankiNoteId: 1839281
 
@@ -148,25 +148,6 @@ Explain lexical scope.
 A closure remembers variables from outer scope.
 
 [/back]
-```
-```
-
-Example with 4-backtick fence (nesting a code block):
-
-````markdown
-````anki
-```js
-const x = 1;
-```
-
-[front]
-What does this code do?
-[/front]
-
-[back]
-Declares a variable
-[/back]
-````
 ````
 
 Rules:

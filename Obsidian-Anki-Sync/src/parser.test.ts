@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseCards } from "./parser";
 
-const singleCard = `\`\`\`anki
+const singleCard = `\`\`\`\`anki
 id: 8b2c9d11-58f2-49a4-9cb9-53b0f73df887
 ankiNoteId: 1839281
 
@@ -16,7 +16,7 @@ What is a closure?
 A closure remembers variables from outer scope.
 
 [/back]
-\`\`\``;
+\`\`\`\``;
 
 describe("parseCards", () => {
   it("parses a single complete card", () => {
@@ -37,7 +37,7 @@ describe("parseCards", () => {
   });
 
   it("handles missing metadata", () => {
-    const md = `\`\`\`anki
+    const md = `\`\`\`\`anki
 
 [front]
 Hello
@@ -46,7 +46,7 @@ Hello
 [back]
 World
 [/back]
-\`\`\``;
+\`\`\`\``;
     const cards = parseCards(md, "NoMeta.md");
     expect(cards).toHaveLength(1);
     expect(cards[0].uuid).toBe("");
@@ -54,7 +54,7 @@ World
   });
 
   it("handles missing ankiNoteId only", () => {
-    const md = `\`\`\`anki
+    const md = `\`\`\`\`anki
 id: some-uuid
 
 [front]
@@ -64,7 +64,7 @@ Hello
 [back]
 World
 [/back]
-\`\`\``;
+\`\`\`\``;
     const cards = parseCards(md, "NoAnkiId.md");
     expect(cards).toHaveLength(1);
     expect(cards[0].uuid).toBe("some-uuid");
@@ -72,7 +72,7 @@ World
   });
 
   it("skips malformed blocks silently (missing [/back])", () => {
-    const md = `\`\`\`anki
+    const md = `\`\`\`\`anki
 
 [front]
 Hello
@@ -80,18 +80,18 @@ Hello
 
 [back]
 World
-\`\`\``;
+\`\`\`\``;
     const cards = parseCards(md, "Malformed.md");
     expect(cards).toHaveLength(0);
   });
 
   it("skips malformed blocks silently (missing [front])", () => {
-    const md = `\`\`\`anki
+    const md = `\`\`\`\`anki
 
 [back]
 World
 [/back]
-\`\`\``;
+\`\`\`\``;
     const cards = parseCards(md, "NoFront.md");
     expect(cards).toHaveLength(0);
   });
@@ -118,7 +118,7 @@ World
   });
 
   it("preserves blank lines in front/back content", () => {
-    const md = `\`\`\`anki
+    const md = `\`\`\`\`anki
 
 [front]
 Line 1
@@ -131,7 +131,7 @@ Back 1
 
 Back 3
 [/back]
-\`\`\``;
+\`\`\`\``;
     const cards = parseCards(md, "BlankLines.md");
     expect(cards[0].front).toBe("Line 1\n\nLine 3");
     expect(cards[0].back).toBe("Back 1\n\nBack 3");
@@ -139,7 +139,7 @@ Back 3
 
   it("parses inline anki blocks (not separated by blank lines)", () => {
     const md = `some text
-\`\`\`anki
+\`\`\`\`anki
 [front]
 Q
 [/front]
@@ -147,11 +147,25 @@ Q
 [back]
 A
 [/back]
-\`\`\`
+\`\`\`\`
 more text`;
     const cards = parseCards(md, "Inline.md");
     expect(cards).toHaveLength(1);
     expect(cards[0].front).toBe("Q");
+  });
+
+  it("ignores 3-backtick anki fence (minimum is 4)", () => {
+    const md = `\`\`\`anki
+[front]
+Q
+[/front]
+
+[back]
+A
+[/back]
+\`\`\``;
+    const cards = parseCards(md, "ThreeBacktick.md");
+    expect(cards).toHaveLength(0);
   });
 
   it("parses 4-backtick fence with nested 3-backtick code block", () => {

@@ -21,7 +21,7 @@ type Block = {
   raw: string;
 };
 
-const OPENING_FENCE = /^(`{3,})anki$/;
+const OPENING_FENCE = /^(`{4,})anki$/;
 
 function extractAnkiBlocks(markdown: string): Block[] {
   const blocks: Block[] = [];
