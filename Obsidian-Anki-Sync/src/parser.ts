@@ -19,8 +19,9 @@ function filePathToDeckPath(filePath: string, basePath: string): string {
 
 type Block = {
   raw: string;
-  startLine: number;
 };
+
+const OPENING_FENCE = /^(`{3,})anki$/;
 
 function extractAnkiBlocks(markdown: string): Block[] {
   const blocks: Block[] = [];
@@ -28,19 +29,19 @@ function extractAnkiBlocks(markdown: string): Block[] {
   let i = 0;
 
   while (i < lines.length) {
-    if (lines[i].trim() === "```anki") {
-      const startLine = i;
+    const match = lines[i].trim().match(OPENING_FENCE);
+    if (match) {
+      const fence = match[1];
       i++;
       const blockLines: string[] = [];
-      while (i < lines.length && lines[i].trim() !== "```") {
+      while (i < lines.length && lines[i].trim() !== fence) {
         blockLines.push(lines[i]);
         i++;
       }
       if (i < lines.length) {
-        // consume closing ```
         i++;
       }
-      blocks.push({ raw: blockLines.join("\n"), startLine });
+      blocks.push({ raw: blockLines.join("\n") });
     } else {
       i++;
     }
@@ -78,7 +79,6 @@ function parseMetadataBlock(lines: string[]): {
       continue;
     }
 
-    // Line doesn't match any metadata pattern — end of metadata section
     restStart = i;
     break;
   }
@@ -93,7 +93,6 @@ function extractTagContent(lines: string[], tag: string): { content: string; rem
   const closeTag = `[/${tag}]`;
 
   let contentStart = -1;
-  let contentEnd = -1;
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
@@ -101,9 +100,8 @@ function extractTagContent(lines: string[], tag: string): { content: string; rem
       contentStart = i + 1;
     }
     if (contentStart !== -1 && trimmed === closeTag) {
-      contentEnd = i;
-      const content = lines.slice(contentStart, contentEnd).join("\n");
-      const remaining = lines.slice(contentEnd + 1);
+      const content = lines.slice(contentStart, i).join("\n");
+      const remaining = lines.slice(i + 1);
       return { content, remaining };
     }
   }
@@ -128,7 +126,7 @@ export function parseCards(markdown: string, filePath: string, basePath = ""): C
     const { content: front, remaining: afterFront } = extractTagContent(rest, "front");
     if (!front) continue;
 
-    const { content: back, remaining: _afterBack } = extractTagContent(afterFront, "back");
+    const { content: back } = extractTagContent(afterFront, "back");
     if (!back) continue;
 
     cards.push({

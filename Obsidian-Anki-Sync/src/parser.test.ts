@@ -153,4 +153,58 @@ more text`;
     expect(cards).toHaveLength(1);
     expect(cards[0].front).toBe("Q");
   });
+
+  it("parses 4-backtick fence with nested 3-backtick code block", () => {
+    const md = `\`\`\`\`anki
+\`\`\`js
+const x = 1;
+\`\`\`
+
+[front]
+What does this code do?
+[/front]
+
+[back]
+Declares a variable
+[/back]
+\`\`\`\``;
+    const cards = parseCards(md, "CodeBlock.md");
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toContain("What does this code do?");
+    expect(cards[0].back).toBe("Declares a variable");
+  });
+
+  it("preserves nested code block content in 4-backtick fence", () => {
+    const md = `\`\`\`\`anki
+id: nested-test
+
+[front]
+Example:
+
+\`\`\`js
+console.log("hello");
+\`\`\`
+[/front]
+
+[back]
+Logs hello
+[/back]
+\`\`\`\``;
+    const cards = parseCards(md, "NestedCode.md");
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toContain('console.log("hello")');
+  });
+
+  it("parses 5-backtick fence with 4-backtick code inside", () => {
+    const md = "`````anki\n````\ntest\n````\n\n[front]\nQ\n[/front]\n\n[back]\nA\n[/back]\n`````";
+    const cards = parseCards(md, "FiveBacktick.md");
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toBe("Q");
+  });
+
+  it("treats 2-backtick as not an anki fence", () => {
+    const md = "``anki\n[front]\nQ\n[/front]\n\n[back]\nA\n[/back]\n``";
+    const cards = parseCards(md, "TwoBacktick.md");
+    expect(cards).toHaveLength(0);
+  });
 });

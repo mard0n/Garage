@@ -121,10 +121,16 @@ Backend::SQL::Joins
 
 # Card Format
 
-Card blocks are fenced blocks.
+Card blocks are fenced blocks with backtick fences.
 
-Example:
+Opening fence: 3 or more backticks followed by `anki` (e.g. ` ```anki `, ```` ````anki ````)
+Closing fence: same number of backticks as the opening fence (e.g. ` ``` `, ```` ```` `)
 
+Using more backticks allows nesting code blocks inside cards without conflicts.
+
+Example with 3-backtick fence:
+
+```markdown
 ```anki
 id: 8b2c9d11-58f2-49a4-9cb9-53b0f73df887
 ankiNoteId: 1839281
@@ -143,6 +149,25 @@ A closure remembers variables from outer scope.
 
 [/back]
 ```
+```
+
+Example with 4-backtick fence (nesting a code block):
+
+````markdown
+````anki
+```js
+const x = 1;
+```
+
+[front]
+What does this code do?
+[/front]
+
+[back]
+Declares a variable
+[/back]
+````
+````
 
 Rules:
 
@@ -150,7 +175,7 @@ Rules:
 * Front and back are multiline
 * Blank lines preserved
 * Markdown preserved
-* Code blocks preserved
+* Code blocks preserved (use a higher backtick count)
 * Metadata required after first sync
 * Plugin inserts metadata automatically
 
