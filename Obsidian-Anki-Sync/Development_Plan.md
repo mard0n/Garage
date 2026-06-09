@@ -6,8 +6,8 @@ Small, incremental, spec-driven steps. Each step is complete when its spec secti
 |---|---------|-------------|------------|--------|
 | 1 | Plugin Setup | Project scaffold: `manifest.json`, `main.ts`, `tsconfig`, `package.json`, dev vault | Plugin loads in Obsidian | ✅ |
 | 2 | AnkiConnect connection | `ankiClient.ts`: ping AnkiConnect, settings tab with Test Connection button, command palette entry, startup check | Settings tab shows connection test result | ✅ |
-| 3 | Internal Card Model | `Card` type (`src/models.ts`) | Typecheck passes | — |
-| 4 | Parser | `parser.ts`: markdown → `Card[]` | Unit test with sample `.md` | — |
+| 3 | Internal Card Model | `Card` type (`src/models.ts`) | Typecheck passes | ✅ |
+| 4 | Parser | `parser.ts`: markdown → `Card[]`, supports basePath config, state machine parser, skips malformed blocks | 12 unit tests pass | ✅ |
 | 5 | Serializer | `serializer.ts`: `Card` → markdown block | Round-trip parse/serialize test | — |
 | 6 | Local State Storage | `mappingStore.ts`: read/write `state.json` | Store → reload → match test | — |
 | 7 | Anki Client | `ankiClient.ts`: AnkiConnect create/update/delete/find/deck | Manual test against Anki | — |

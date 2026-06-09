@@ -103,6 +103,10 @@ Rules:
 * Filename without extension becomes final deck segment
 * Renaming file/folder moves cards automatically
 * Moving file moves cards automatically
+* A configurable base path determines the root folder for deck mapping
+  * Files outside the base path produce no cards
+  * Example: base path `Flashcards/` + file `Flashcards/Frontend/JS/Functions.md`
+    → deck `Frontend::JS::Functions`
 
 Examples:
 
