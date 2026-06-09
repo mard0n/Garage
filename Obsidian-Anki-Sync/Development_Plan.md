@@ -5,7 +5,7 @@ Small, incremental, spec-driven steps. Each step is complete when its spec secti
 | # | Section | Deliverable | Verifiable | Status |
 |---|---------|-------------|------------|--------|
 | 1 | Plugin Setup | Project scaffold: `manifest.json`, `main.ts`, `tsconfig`, `package.json`, dev vault | Plugin loads in Obsidian | ✅ |
-| 2 | AnkiConnect connection | `ankiClient.ts`: ping AnkiConnect, verify reachability | Plugin logs "Anki connected" or "Anki unreachable" | — |
+| 2 | AnkiConnect connection | `ankiClient.ts`: ping AnkiConnect, settings tab with Test Connection button, command palette entry, startup check | Settings tab shows connection test result | ✅ |
 | 3 | Internal Card Model | `Card` type (`src/models.ts`) | Typecheck passes | — |
 | 4 | Parser | `parser.ts`: markdown → `Card[]` | Unit test with sample `.md` | — |
 | 5 | Serializer | `serializer.ts`: `Card` → markdown block | Round-trip parse/serialize test | — |
