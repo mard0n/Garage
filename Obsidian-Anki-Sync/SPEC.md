@@ -124,7 +124,7 @@ Backend::SQL::Joins
 Card blocks are fenced blocks with backtick fences.
 
 Opening fence: 4 backticks followed by `anki` (e.g. ````anki)
-Closing fence: 4 backticks as the opening fence (e.g. ````)
+Closing fence: same number of backticks as the opening fence (e.g. ````)
 
 Using 4 backticks allows nesting code blocks inside cards without conflicts.
 3-backtick fences (` ``` `) are not treated as anki cards — they are regular code blocks.
@@ -156,7 +156,7 @@ Rules:
 * Front and back are multiline
 * Blank lines preserved
 * Markdown preserved
-* Code blocks preserved (use a higher backtick count)
+* Code blocks preserved (use 3 backticks inside the card)
 * Metadata required after first sync
 * Plugin inserts metadata automatically
 

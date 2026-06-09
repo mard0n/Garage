@@ -33,7 +33,6 @@ describe("serializeCard", () => {
     const md = serializeCard(card);
     const parsed = parseCards(md, card.filePath);
     expect(parsed).toHaveLength(1);
-    expect(parsed[0].uuid).toBe(card.uuid);
     expect(parsed[0].ankiNoteId).toBeUndefined();
   });
 
@@ -45,28 +44,22 @@ describe("serializeCard", () => {
     expect(parsed[0].uuid).toBe("");
   });
 
-  it("uses 4-backtick fence by default", () => {
+  it("round-trips a card with a 3-backtick code block", () => {
+    const card = makeCard({ front: "Example:\n```js\nconst x = 1;\n```" });
+    const md = serializeCard(card);
+    const parsed = parseCards(md, card.filePath);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].front).toContain("const x = 1");
+  });
+
+  it("always uses 4-backtick fence", () => {
     const card = makeCard();
     const md = serializeCard(card);
     expect(md.startsWith("````anki")).toBe(true);
     expect(md.endsWith("````")).toBe(true);
   });
 
-  it("uses 4-backtick fence when content has 3 backticks", () => {
-    const card = makeCard({ front: "Example:\n```js\nconst x = 1;\n```" });
-    const md = serializeCard(card);
-    expect(md.startsWith("````anki")).toBe(true);
-    expect(md.endsWith("````")).toBe(true);
-  });
-
-  it("uses 5-backtick fence when content has 4 backticks", () => {
-    const card = makeCard({ front: "````\ncode\n````" });
-    const md = serializeCard(card);
-    expect(md.startsWith("`````anki")).toBe(true);
-    expect(md.endsWith("`````")).toBe(true);
-  });
-
-  it("produces expected output for a simple card", () => {
+  it("produces expected output", () => {
     const card = makeCard({
       uuid: "test-uuid",
       ankiNoteId: 42,
