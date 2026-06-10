@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  changeDeck,
+  createDeck,
   createNote,
+  deckNames,
   deleteNotes,
   findNotes,
   notesInfo,
@@ -59,6 +62,43 @@ if (isOnline) {
     it("findNotes returns empty array for unknown UUID", async () => {
       const ids = await findNotes(crypto.randomUUID());
       expect(ids).toHaveLength(0);
+    });
+  });
+
+  describe("ankiClient — decks", () => {
+    const testDeck = `Test-Deck-${Date.now()}`;
+    const deckNoteUuid = crypto.randomUUID();
+    let deckNoteId: number;
+
+    it("deckNames returns at least Default", async () => {
+      const names = await deckNames();
+      expect(names).toContain("Default");
+    });
+
+    it("createDeck creates a new deck", async () => {
+      await createDeck(testDeck);
+      const names = await deckNames();
+      expect(names).toContain(testDeck);
+    });
+
+    it("changeDeck moves a note to the new deck", async () => {
+      deckNoteId = await createNote({
+        deckName: "Default",
+        front: "Move test",
+        back: "Moving decks",
+        uuid: deckNoteUuid,
+      });
+      const info = await notesInfo([deckNoteId]);
+      const cardIds = info[0].cards;
+      await changeDeck(cardIds, testDeck);
+      const ids = await findNotes(deckNoteUuid);
+      expect(ids).toContain(deckNoteId);
+    });
+
+    it("cleans up test note", async () => {
+      if (deckNoteId) {
+        await deleteNotes([deckNoteId]);
+      }
     });
   });
 }

@@ -25,6 +25,7 @@ export async function ping(): Promise<boolean> {
 export type NoteInfo = {
   noteId: number;
   fields: Record<string, { value: string }>;
+  cards: number[];
 };
 
 export type CreateNoteParams = {
@@ -76,4 +77,16 @@ export async function updateNoteFields(params: UpdateNoteFieldsParams): Promise<
 
 export async function deleteNotes(noteIds: number[]): Promise<null> {
   return request("deleteNotes", { notes: noteIds });
+}
+
+export async function deckNames(): Promise<string[]> {
+  return request("deckNames");
+}
+
+export async function createDeck(name: string): Promise<null> {
+  return request("createDeck", { deck: name });
+}
+
+export async function changeDeck(cards: number[], deckName: string): Promise<null> {
+  return request("changeDeck", { cards, deck: deckName });
 }
