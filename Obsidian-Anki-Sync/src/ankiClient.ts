@@ -34,6 +34,13 @@ export type CreateNoteParams = {
   uuid: string;
 };
 
+export type UpdateNoteFieldsParams = {
+  noteId: number;
+  front?: string;
+  back?: string;
+  uuid?: string;
+};
+
 export async function findNotes(uuid: string): Promise<number[]> {
   return request("findNotes", { query: `UUID:${uuid}` });
 }
@@ -57,4 +64,16 @@ export async function createNote(params: CreateNoteParams): Promise<number> {
       },
     },
   });
+}
+
+export async function updateNoteFields(params: UpdateNoteFieldsParams): Promise<null> {
+  const fields: Record<string, string> = {};
+  if (params.front !== undefined) fields.Front = params.front;
+  if (params.back !== undefined) fields.Back = params.back;
+  if (params.uuid !== undefined) fields.UUID = params.uuid;
+  return request("updateNoteFields", { note: { id: params.noteId, fields } });
+}
+
+export async function deleteNotes(noteIds: number[]): Promise<null> {
+  return request("deleteNotes", { notes: noteIds });
 }
