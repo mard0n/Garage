@@ -13,7 +13,7 @@ Small, incremental, spec-driven steps. Each step is complete when its spec secti
 | 7a | Anki Client — Create/Find | `ankiClient.ts`: `findNotes`, `notesInfo`, `createNote` | Create note in Anki, find by UUID, read fields back | ✅ |
 | 7b | Anki Client — Update/Delete | `ankiClient.ts`: `updateNoteFields`, `deleteNotes` | Update front/back, delete note, confirm gone | ✅ |
 | 7c | Anki Client — Decks | `ankiClient.ts`: `deckNames`, `createDeck`, `changeDeck` | List, create, and move notes between decks | ✅ |
-| 8 | Sync Engine | `syncEngine.ts`: diff, conflict rules, CRUD decisions | Integration test (mock parser + client) | — |
+| 8 | Sync Engine | `syncEngine.ts`: diff, conflict rules, CRUD decisions | Integration test (mock parser + client) | ✅ |
 | 9 | Manual trigger | Status bar button wired to sync engine | Click → sync runs | — |
 | 10 | File Save + Watchers | `watchers.ts`: `vault.on("modify")`, debounce, background timer | Save file → sync runs | — |
 | 11 | File Manager | `fileManager.ts`: create folders/files from deck paths | Test with vault API | — |

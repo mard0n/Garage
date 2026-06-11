@@ -1,0 +1,263 @@
+import type { CreateNoteParams, NoteInfo, UpdateNoteFieldsParams } from "./ankiClient";
+import type { Mapping, State } from "./mappingStore";
+import type { Card } from "./models";
+
+export type AnkiDeps = {
+  findNotes: (uuid: string) => Promise<number[]>;
+  notesInfo: (noteIds: number[]) => Promise<NoteInfo[]>;
+  createNote: (params: CreateNoteParams) => Promise<number>;
+  updateNoteFields: (params: UpdateNoteFieldsParams) => Promise<null>;
+  deleteNotes: (noteIds: number[]) => Promise<null>;
+  changeDeck: (cards: number[], deckName: string) => Promise<null>;
+};
+
+export type PullCard = {
+  uuid: string;
+  filePath: string;
+  deckPath: string;
+  front: string;
+  back: string;
+};
+
+export type SyncSummary = {
+  created: number;
+  updated: number;
+  deleted: number;
+  pulled: number;
+  removed: number;
+};
+
+export type SyncResult = {
+  newState: State;
+  pullFromAnki: PullCard[];
+  uuidsDeletedFromAnki: string[];
+  summary: SyncSummary;
+};
+
+export function generateUuid(): string {
+  return crypto.randomUUID();
+}
+
+function deckPath(filePath: string): string {
+  return filePath.replace(/\.md$/, "").replace(/\//g, "::");
+}
+
+// ─── Pure helpers (no I/O) ───
+
+type CardWithMapping = { card: Card; mapping: Mapping };
+
+function assignUuids(cards: Card[]): Map<string, Card> {
+  const map = new Map<string, Card>();
+  for (const card of cards) {
+    if (!card.uuid) card.uuid = generateUuid();
+    map.set(card.uuid, card);
+  }
+  return map;
+}
+
+function categorize(
+  state: State,
+  localByUuid: Map<string, Card>,
+): {
+  toCreate: Card[];
+  toUpdate: CardWithMapping[];
+  toDelete: Array<{ uuid: string; mapping: Mapping }>;
+  unchanged: CardWithMapping[];
+} {
+  const toCreate: Card[] = [];
+  const toUpdate: CardWithMapping[] = [];
+  const unchanged: CardWithMapping[] = [];
+  const remaining = new Map(Object.entries(state));
+
+  for (const [uuid, card] of localByUuid) {
+    const mapping = remaining.get(uuid);
+    if (!mapping) {
+      toCreate.push(card);
+    } else {
+      remaining.delete(uuid);
+      if (card.updatedAt > mapping.lastSync) {
+        toUpdate.push({ card, mapping });
+      } else {
+        unchanged.push({ card, mapping });
+      }
+    }
+  }
+
+  const toDelete = [...remaining.entries()].map(([uuid, mapping]) => ({ uuid, mapping }));
+
+  return { toCreate, toUpdate, toDelete, unchanged };
+}
+
+function buildNewState(
+  state: State,
+  toUpdate: CardWithMapping[],
+  unchanged: CardWithMapping[],
+  createdMappings: Array<{ uuid: string; mapping: Mapping }>,
+): State {
+  const newState: State = {};
+
+  for (const { card, mapping } of toUpdate) {
+    newState[card.uuid] = { ...mapping, path: card.filePath, lastSync: Date.now() };
+  }
+
+  for (const { card, mapping } of unchanged) {
+    newState[card.uuid] = { ...mapping };
+  }
+
+  for (const { uuid, mapping } of createdMappings) {
+    newState[uuid] = mapping;
+  }
+
+  for (const [uuid, mapping] of Object.entries(state)) {
+    if (!newState[uuid]) {
+      newState[uuid] = { ...mapping };
+    }
+  }
+
+  return newState;
+}
+
+// ─── I/O helpers (call Anki) ───
+
+async function recoverNoteId(card: Card, deps: AnkiDeps): Promise<number | null> {
+  if (!card.uuid) return null;
+  const ids = await deps.findNotes(card.uuid);
+  return ids.length > 0 ? ids[0] : null;
+}
+
+async function pushUpdate(card: Card, mapping: Mapping, deps: AnkiDeps): Promise<void> {
+  await deps.updateNoteFields({
+    noteId: mapping.ankiNoteId,
+    front: card.front,
+    back: card.back,
+  });
+
+  const oldDeck = deckPath(mapping.path);
+  if (oldDeck !== card.deckPath) {
+    const infos = await deps.notesInfo([mapping.ankiNoteId]);
+    if (infos.length > 0 && infos[0].cards.length > 0) {
+      await deps.changeDeck(infos[0].cards, card.deckPath);
+    }
+  }
+}
+
+async function checkRemote(
+  uuid: string,
+  mapping: Mapping,
+  localCard: Card | undefined,
+  deps: AnkiDeps,
+): Promise<{ pull: PullCard | null; deleted: boolean }> {
+  const ids = await deps.findNotes(uuid);
+  if (ids.length === 0) return { pull: null, deleted: true };
+
+  const infos = await deps.notesInfo(ids);
+  if (infos.length === 0) return { pull: null, deleted: true };
+
+  const remoteFront = infos[0].fields.Front?.value ?? "";
+  const remoteBack = infos[0].fields.Back?.value ?? "";
+
+  if (!localCard) {
+    return {
+      pull: {
+        uuid,
+        filePath: mapping.path,
+        deckPath: deckPath(mapping.path),
+        front: remoteFront,
+        back: remoteBack,
+      },
+      deleted: false,
+    };
+  }
+
+  const changed = remoteFront !== localCard.front || remoteBack !== localCard.back;
+  if (changed && localCard.updatedAt <= mapping.lastSync) {
+    return {
+      pull: {
+        uuid,
+        filePath: mapping.path,
+        deckPath: deckPath(mapping.path),
+        front: remoteFront,
+        back: remoteBack,
+      },
+      deleted: false,
+    };
+  }
+
+  return { pull: null, deleted: false };
+}
+
+// ─── Main sync ───
+
+export async function sync(localCards: Card[], state: State, deps: AnkiDeps): Promise<SyncResult> {
+  const localByUuid = assignUuids(localCards);
+  const { toCreate, toUpdate, toDelete, unchanged } = categorize(state, localByUuid);
+
+  // Pass A: Push local changes to Anki
+  const pushedUuids = new Set<string>();
+  const createdMappings: Array<{ uuid: string; mapping: Mapping }> = [];
+  let createdCount = 0;
+
+  for (const card of toCreate) {
+    const existingId = await recoverNoteId(card, deps);
+    if (existingId !== null) {
+      createdMappings.push({
+        uuid: card.uuid,
+        mapping: { ankiNoteId: existingId, path: card.filePath, lastSync: Date.now() },
+      });
+    } else {
+      const noteId = await deps.createNote({
+        deckName: card.deckPath,
+        front: card.front,
+        back: card.back,
+        uuid: card.uuid,
+      });
+      createdMappings.push({
+        uuid: card.uuid,
+        mapping: { ankiNoteId: noteId, path: card.filePath, lastSync: Date.now() },
+      });
+      createdCount++;
+    }
+    pushedUuids.add(card.uuid);
+  }
+
+  for (const { card, mapping } of toUpdate) {
+    await pushUpdate(card, mapping, deps);
+    pushedUuids.add(card.uuid);
+  }
+
+  for (const { mapping } of toDelete) {
+    await deps.deleteNotes([mapping.ankiNoteId]);
+  }
+
+  // Pass B: Check remaining cards against Anki
+  const newState = buildNewState(state, toUpdate, unchanged, createdMappings);
+  const pullFromAnki: PullCard[] = [];
+  const uuidsDeletedFromAnki: string[] = [];
+
+  for (const [uuid, mapping] of Object.entries(newState)) {
+    if (pushedUuids.has(uuid)) continue;
+
+    const localCard = localByUuid.get(uuid);
+    const { pull, deleted } = await checkRemote(uuid, mapping, localCard, deps);
+
+    if (deleted) {
+      uuidsDeletedFromAnki.push(uuid);
+      delete newState[uuid];
+    } else if (pull) {
+      pullFromAnki.push(pull);
+    }
+  }
+
+  return {
+    newState,
+    pullFromAnki,
+    uuidsDeletedFromAnki,
+    summary: {
+      created: createdCount,
+      updated: toUpdate.length,
+      deleted: toDelete.length,
+      pulled: pullFromAnki.length,
+      removed: uuidsDeletedFromAnki.length,
+    },
+  };
+}
