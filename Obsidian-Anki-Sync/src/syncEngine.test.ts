@@ -81,7 +81,6 @@ function makeDeps(existing: Record<string, ExistingNote> = {}): AnkiDeps {
       }),
     updateNoteFields: vi.fn().mockResolvedValue(null),
     deleteNotes: vi.fn().mockResolvedValue(null),
-    changeDeck: vi.fn().mockResolvedValue(null),
   };
 }
 
@@ -164,27 +163,6 @@ describe("sync", () => {
       expect(deps.deleteNotes).toHaveBeenCalledWith([5000]);
       expect(result.newState[uuid]).toBeUndefined();
       expect(result.summary.deleted).toBe(1);
-    });
-
-    it("changes deck when file path changed", async () => {
-      const uuid = "deck-uuid";
-      const card = makeCard({
-        uuid,
-        ankiNoteId: 5000,
-        filePath: "New/Path.md",
-        deckPath: "New::Path",
-        updatedAt: 2000,
-      });
-      const state: State = { [uuid]: makeMapping({ lastSync: 1000 }) };
-      const deps = makeDeps({
-        [uuid]: { noteId: 5000, front: "Test front?", back: "Test back.", cards: [111, 222] },
-      });
-
-      const result = await sync([card], state, deps);
-
-      expect(deps.changeDeck).toHaveBeenCalledTimes(1);
-      expect(deps.changeDeck).toHaveBeenCalledWith([111, 222], "New::Path");
-      expect(result.newState[uuid].path).toBe("New/Path.md");
     });
   });
 

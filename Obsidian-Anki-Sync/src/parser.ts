@@ -1,20 +1,17 @@
 import type { Card } from "./models";
 
-function filePathToDeckPath(filePath: string, basePath: string): string {
+function filePathToDeckPath(filePath: string, rootDeck: string): string {
   let path = filePath;
   if (path.endsWith(".md")) {
     path = path.slice(0, -3);
   }
 
-  if (basePath) {
-    const normalized = `${basePath.replace(/\/+$/, "")}/`;
-    if (!path.startsWith(normalized)) {
-      return "";
-    }
-    path = path.slice(normalized.length);
-  }
+  const deckSuffix = path.replace(/\//g, "::");
 
-  return path.replace(/\//g, "::");
+  if (rootDeck) {
+    return `${rootDeck}::${deckSuffix}`;
+  }
+  return deckSuffix;
 }
 
 type Block = {
@@ -109,11 +106,8 @@ function extractTagContent(lines: string[], tag: string): { content: string; rem
   return { content: "", remaining: lines };
 }
 
-export function parseCards(markdown: string, filePath: string, basePath = ""): Card[] {
-  const deckPath = filePathToDeckPath(filePath, basePath);
-  if (!deckPath) {
-    return [];
-  }
+export function parseCards(markdown: string, filePath: string, rootDeck = ""): Card[] {
+  const deckPath = filePathToDeckPath(filePath, rootDeck);
 
   const blocks = extractAnkiBlocks(markdown);
   const cards: Card[] = [];

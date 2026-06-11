@@ -106,15 +106,19 @@ World
     expect(cards[0].deckPath).toBe("Frontend::Javascript::Functions");
   });
 
-  it("respects basePath — files outside basePath return empty", () => {
-    const cards = parseCards(singleCard, "Other/Frontend/JS/Functions.md", "Flashcards/");
-    expect(cards).toHaveLength(0);
+  it("prepends rootDeck when provided", () => {
+    const cards = parseCards(singleCard, "Frontend/JS/Functions.md", "Obsidian");
+    expect(cards[0].deckPath).toBe("Obsidian::Frontend::JS::Functions");
   });
 
-  it("respects basePath — files inside basePath compute relative deck", () => {
-    const cards = parseCards(singleCard, "Flashcards/Frontend/JS/Functions.md", "Flashcards/");
-    expect(cards).toHaveLength(1);
-    expect(cards[0].deckPath).toBe("Frontend::JS::Functions");
+  it("uses rootDeck with multiple path segments", () => {
+    const cards = parseCards(singleCard, "Math/Calculus/Integrals.md", "Flashcards");
+    expect(cards[0].deckPath).toBe("Flashcards::Math::Calculus::Integrals");
+  });
+
+  it("handles root-level files with rootDeck", () => {
+    const cards = parseCards(singleCard, "Closures.md", "Obsidian");
+    expect(cards[0].deckPath).toBe("Obsidian::Closures");
   });
 
   it("preserves blank lines in front/back content", () => {

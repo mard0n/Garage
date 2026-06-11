@@ -8,7 +8,6 @@ export type AnkiDeps = {
   createNote: (params: CreateNoteParams) => Promise<number>;
   updateNoteFields: (params: UpdateNoteFieldsParams) => Promise<null>;
   deleteNotes: (noteIds: number[]) => Promise<null>;
-  changeDeck: (cards: number[], deckName: string) => Promise<null>;
 };
 
 export type PullCard = {
@@ -38,8 +37,18 @@ export function generateUuid(): string {
   return crypto.randomUUID();
 }
 
-function deckPath(filePath: string): string {
-  return filePath.replace(/\.md$/, "").replace(/\//g, "::");
+function filePathToDeckPath(filePath: string, rootDeck: string): string {
+  let path = filePath;
+  if (path.endsWith(".md")) {
+    path = path.slice(0, -3);
+  }
+
+  const deckSuffix = path.replace(/\//g, "::");
+
+  if (rootDeck) {
+    return `${rootDeck}::${deckSuffix}`;
+  }
+  return deckSuffix;
 }
 
 // ─── Pure helpers (no I/O) ───
@@ -131,14 +140,6 @@ async function pushUpdate(card: Card, mapping: Mapping, deps: AnkiDeps): Promise
     front: card.front,
     back: card.back,
   });
-
-  const oldDeck = deckPath(mapping.path);
-  if (oldDeck !== card.deckPath) {
-    const infos = await deps.notesInfo([mapping.ankiNoteId]);
-    if (infos.length > 0 && infos[0].cards.length > 0) {
-      await deps.changeDeck(infos[0].cards, card.deckPath);
-    }
-  }
 }
 
 async function checkRemote(
@@ -146,6 +147,7 @@ async function checkRemote(
   mapping: Mapping,
   localCard: Card | undefined,
   deps: AnkiDeps,
+  rootDeck: string,
 ): Promise<{ pull: PullCard | null; deleted: boolean }> {
   const ids = await deps.findNotes(uuid);
   if (ids.length === 0) return { pull: null, deleted: true };
@@ -161,7 +163,7 @@ async function checkRemote(
       pull: {
         uuid,
         filePath: mapping.path,
-        deckPath: deckPath(mapping.path),
+        deckPath: filePathToDeckPath(mapping.path, rootDeck),
         front: remoteFront,
         back: remoteBack,
       },
@@ -175,7 +177,7 @@ async function checkRemote(
       pull: {
         uuid,
         filePath: mapping.path,
-        deckPath: deckPath(mapping.path),
+        deckPath: filePathToDeckPath(mapping.path, rootDeck),
         front: remoteFront,
         back: remoteBack,
       },
@@ -188,7 +190,12 @@ async function checkRemote(
 
 // ─── Main sync ───
 
-export async function sync(localCards: Card[], state: State, deps: AnkiDeps): Promise<SyncResult> {
+export async function sync(
+  localCards: Card[],
+  state: State,
+  deps: AnkiDeps,
+  rootDeck = "",
+): Promise<SyncResult> {
   const localByUuid = assignUuids(localCards);
   const { toCreate, toUpdate, toDelete, unchanged } = categorize(state, localByUuid);
 
@@ -238,7 +245,7 @@ export async function sync(localCards: Card[], state: State, deps: AnkiDeps): Pr
     if (pushedUuids.has(uuid)) continue;
 
     const localCard = localByUuid.get(uuid);
-    const { pull, deleted } = await checkRemote(uuid, mapping, localCard, deps);
+    const { pull, deleted } = await checkRemote(uuid, mapping, localCard, deps, rootDeck);
 
     if (deleted) {
       uuidsDeletedFromAnki.push(uuid);

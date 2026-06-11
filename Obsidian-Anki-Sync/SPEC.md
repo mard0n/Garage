@@ -12,10 +12,9 @@ Requirements:
 * Manual sync via status bar button
 * Automatic card discovery
 * Automatic card creation
-* Automatic folder/deck mapping
 * Automatic file creation from Anki cards
 * Automatic ID generation
-* Automatic deck migration on rename/move
+* Vault mapped to a single configurable root deck (1 vault → 1 root deck, hierarchy preserved)
 * Deletion sync both directions
 * MVP supports Basic note type only
 
@@ -78,41 +77,17 @@ Parser:
 
 ---
 
-# Folder → Deck Mapping
+# Root Deck Mapping
 
-Mapping rule:
+The entire vault maps to a single configurable root deck, with the vault's folder hierarchy preserved as subdecks.
 
-```text
-Vault Path:
+Rule:
 
-Frontend/Javascript/Functions.md
-
-↓
-
-Anki Deck:
-
-Frontend::Javascript::Functions
-```
-
-Rules:
-
-* Folder separators become `::`
-* Filename without extension becomes final deck segment
-* Renaming file/folder moves cards automatically
-* Moving file moves cards automatically
-* A configurable base path determines the root folder for deck mapping
-  * Files outside the base path produce no cards
-  * Example: base path `Flashcards/` + file `Flashcards/Frontend/JS/Functions.md`
-    → deck `Frontend::JS::Functions`
-
-Examples:
-
-```text
-Backend/SQL/Joins.md
-↓
-
-Backend::SQL::Joins
-```
+* The root deck name is configured in plugin settings (default: vault name if left empty)
+* Each file's path is translated to a deck path: `{rootDeck}::{subfolder}::...::{filename}` (`.md` extension stripped, `/` replaced with `::`)
+  * Example: `Frontend/JS/Closures.md` with root deck `Obsidian` → deck `Obsidian::Frontend::JS::Closures`
+* The deck path is assigned when the card is first created in Anki
+* Moving/renaming files in the vault does NOT migrate the card to a new deck — the original deck is preserved
 
 ---
 
@@ -352,24 +327,14 @@ Flow:
 ```text
 find note
 ↓
-read deck path
-↓
-convert deck path to file path
+read file path from local state
 ↓
 create file if missing
 ↓
 append card block
 ```
 
-Example:
-
-```text
-Frontend::Javascript::Functions
-
-↓
-
-Frontend/Javascript/Functions.md
-```
+File path is stored in the local mapping state, not derived from deck name.
 
 ---
 
@@ -391,29 +356,7 @@ append to bottom
 
 ---
 
-# Rename / Move Handling
 
-Detect:
-
-```text
-file rename
-folder rename
-file move
-```
-
-Behavior:
-
-```text
-recalculate deck path
-↓
-move Anki notes to new deck
-```
-
-Deck path is derived dynamically.
-
-Never store deck path in card.
-
----
 
 # Deletion Sync
 
@@ -520,7 +463,7 @@ type Card = {
     back: string
 
     filePath: string
-    deckPath: string
+    deckPath: string    // derived from filePath + rootDeck: "{rootDeck}::{subdir}::{filename}"
 
     updatedAt: number
 }
@@ -563,7 +506,6 @@ ankiClient.ts
 create
 update
 delete
-move deck
 query changes
 ```
 
@@ -631,9 +573,8 @@ User should be able to:
 4. Edit card in either system
 5. Click sync
 6. Changes propagate to the other system
-7. Rename folders/files
-8. Decks update automatically
-9. Delete cards
-10. Deletions propagate
+7. Rename folders/files (no effect on deck)
+8. Delete cards
+9. Deletions propagate
 
 ```
