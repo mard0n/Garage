@@ -1,8 +1,25 @@
-import { TFile, type Vault } from "obsidian";
+import { TFile, TFolder, type Vault } from "obsidian";
 import type { Card } from "./models";
 import { serializeCard } from "./serializer";
 
 const OPENING_FENCE = /^(`{4,})anki$/;
+
+async function ensureParentFolder(vault: Vault, filePath: string): Promise<void> {
+  const parts = filePath.split("/");
+  if (parts.length <= 1) return;
+  parts.pop();
+  for (let i = 1; i <= parts.length; i++) {
+    const dir = parts.slice(0, i).join("/");
+    const existing = vault.getAbstractFileByPath(dir);
+    if (!(existing instanceof TFolder)) {
+      try {
+        await vault.createFolder(dir);
+      } catch {
+        // may race with another creation
+      }
+    }
+  }
+}
 
 export async function replaceBlock(
   vault: Vault,
@@ -101,7 +118,7 @@ export async function appendBlock(
 ): Promise<void> {
   const file = vault.getAbstractFileByPath(filePath);
   if (!(file instanceof TFile)) {
-    // File doesn't exist — create it with the card
+    await ensureParentFolder(vault, filePath);
     await vault.create(filePath, serializeCard(card) + "\n");
     return;
   }

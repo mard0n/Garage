@@ -87,6 +87,9 @@ function makeDeps(existing: Record<string, ExistingNote> = {}): AnkiDeps {
     deckNames: vi.fn().mockResolvedValue([]),
     findCards: vi.fn().mockResolvedValue([]),
     deleteDecks: vi.fn().mockResolvedValue(null),
+    findNotesByQuery: vi.fn().mockResolvedValue([]),
+    cardsInfo: vi.fn().mockResolvedValue([]),
+    addTags: vi.fn().mockResolvedValue(null),
   };
 }
 
@@ -192,6 +195,7 @@ describe("sync", () => {
       expect(result.pullFromAnki).toHaveLength(1);
       expect(result.pullFromAnki[0]).toMatchObject({
         uuid,
+        ankiNoteId: 5000,
         front: "New front?",
         back: "New back.",
         filePath: "Default/Deck.md",
@@ -230,6 +234,168 @@ describe("sync", () => {
       expect(result.uuidsDeletedFromAnki).toContain(uuid);
       expect(result.newState[uuid]).toBeUndefined();
       expect(result.summary.removed).toBe(1);
+    });
+  });
+
+  describe("Phase 3 — orphan discovery", () => {
+    it("discovers orphaned Anki notes and returns them as pulls", async () => {
+      const deps = makeDeps();
+      deps.findCards = vi.fn().mockResolvedValue([111, 222]);
+      deps.cardsInfo = vi.fn().mockResolvedValue([
+        {
+          cardId: 111,
+          note: 5001,
+          deckName: "TestRoot::Folder::Note",
+          modelName: "Basic-Obsidian",
+          fields: {
+            Front: { value: "Orphan front?" },
+            Back: { value: "Orphan back." },
+            UUID: { value: "orphan-uuid-1" },
+          },
+        },
+        {
+          cardId: 222,
+          note: 5002,
+          deckName: "TestRoot::OrphanTopLevel",
+          modelName: "Basic-Obsidian",
+          fields: {
+            Front: { value: "Top-level front?" },
+            Back: { value: "Top-level back." },
+            UUID: { value: "orphan-uuid-2" },
+          },
+        },
+      ]);
+
+      const result = await sync([], {}, deps, "TestRoot");
+
+      expect(result.pullFromAnki).toHaveLength(2);
+
+      expect(result.pullFromAnki[0]).toMatchObject({
+        uuid: "orphan-uuid-1",
+        ankiNoteId: 5001,
+        filePath: "Folder/Note.md",
+        deckPath: "TestRoot::Folder::Note",
+        front: "Orphan front?",
+        back: "Orphan back.",
+      });
+
+      expect(result.pullFromAnki[1]).toMatchObject({
+        uuid: "orphan-uuid-2",
+        ankiNoteId: 5002,
+        filePath: "OrphanTopLevel.md",
+        deckPath: "TestRoot::OrphanTopLevel",
+        front: "Top-level front?",
+        back: "Top-level back.",
+      });
+
+      expect(result.newState["orphan-uuid-1"]).toBeDefined();
+      expect(result.newState["orphan-uuid-1"].ankiNoteId).toBe(5001);
+      expect(result.newState["orphan-uuid-2"]).toBeDefined();
+      expect(result.newState["orphan-uuid-2"].ankiNoteId).toBe(5002);
+    });
+
+    it("generates UUID and adds tag for cards without UUID fields during discovery", async () => {
+      const deps = makeDeps();
+      deps.findCards = vi.fn().mockResolvedValue([333]);
+      deps.cardsInfo = vi.fn().mockResolvedValue([
+        {
+          cardId: 333,
+          note: 5003,
+          deckName: "TestRoot::NoUuid",
+          modelName: "Basic",
+          fields: {
+            Front: { value: "Front?" },
+            Back: { value: "Back." },
+          },
+        },
+      ]);
+
+      const result = await sync([], {}, deps, "TestRoot");
+
+      expect(result.pullFromAnki).toHaveLength(1);
+      expect(result.pullFromAnki[0]).toMatchObject({
+        ankiNoteId: 5003,
+        filePath: "NoUuid.md",
+        deckPath: "TestRoot::NoUuid",
+        front: "Front?",
+        back: "Back.",
+      });
+      expect(result.pullFromAnki[0].uuid).toBeTruthy();
+      expect(deps.addTags).toHaveBeenCalledWith([5003], `obsidian-sync::${result.pullFromAnki[0].uuid}`);
+    });
+
+    it("skips cards when addTags fails", async () => {
+      const deps = makeDeps();
+      deps.findCards = vi.fn().mockResolvedValue([333]);
+      deps.cardsInfo = vi.fn().mockResolvedValue([
+        {
+          cardId: 333,
+          note: 5003,
+          deckName: "TestRoot::NoUuid",
+          modelName: "Basic",
+          fields: {
+            Front: { value: "Front?" },
+            Back: { value: "Back." },
+          },
+        },
+      ]);
+      deps.addTags = vi.fn().mockRejectedValue(new Error("API error"));
+
+      const result = await sync([], {}, deps, "TestRoot");
+
+      expect(result.pullFromAnki).toHaveLength(0);
+      expect(result.newState).toEqual({});
+    });
+
+    it("skips known UUIDs during discovery", async () => {
+      const deps = makeDeps();
+      deps.findCards = vi.fn().mockResolvedValue([444]);
+      deps.cardsInfo = vi.fn().mockResolvedValue([
+        {
+          cardId: 444,
+          note: 5004,
+          deckName: "TestRoot::Known",
+          modelName: "Basic-Obsidian",
+          fields: {
+            Front: { value: "Front?" },
+            Back: { value: "Back." },
+            UUID: { value: "already-known-uuid" },
+          },
+        },
+      ]);
+
+      // Seed state so that "already-known-uuid" is in knownUuids
+      const state: State = {
+        "already-known-uuid": makeMapping({ ankiNoteId: 5004 }),
+      };
+
+      const result = await sync([], state, deps, "TestRoot");
+
+      expect(result.pullFromAnki).toHaveLength(0);
+    });
+
+    it("skips discovery when rootDeck is empty", async () => {
+      const deps = makeDeps();
+      deps.findCards = vi.fn().mockResolvedValue([555]);
+      deps.cardsInfo = vi.fn().mockResolvedValue([
+        {
+          cardId: 555,
+          note: 5005,
+          deckName: "SomeDeck",
+          modelName: "Basic-Obsidian",
+          fields: {
+            Front: { value: "Front?" },
+            Back: { value: "Back." },
+            UUID: { value: "some-uuid" },
+          },
+        },
+      ]);
+
+      // Empty rootDeck — discovery should be skipped
+      const result = await sync([], {}, deps, "");
+
+      expect(deps.findCards).not.toHaveBeenCalled();
+      expect(result.pullFromAnki).toHaveLength(0);
     });
   });
 

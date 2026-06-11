@@ -1,4 +1,5 @@
 import type {
+  CardInfo,
   CreateNoteParams,
   NoteInfo,
   UpdateNoteFieldsParams,
@@ -17,7 +18,10 @@ export type AnkiDeps = {
   changeDeck: (cards: number[], deckName: string) => Promise<null>;
   deckNames: () => Promise<string[]>;
   findCards: (query: string) => Promise<number[]>;
+  cardsInfo: (cardIds: number[]) => Promise<CardInfo[]>;
+  addTags: (noteIds: number[], tags: string) => Promise<null>;
   deleteDecks: (decks: string[]) => Promise<null>;
+  findNotesByQuery: (query: string) => Promise<number[]>;
 };
 
 export type PullCard = {
@@ -26,6 +30,7 @@ export type PullCard = {
   deckPath: string;
   front: string;
   back: string;
+  ankiNoteId: number;
 };
 
 export type SyncSummary = {
@@ -59,6 +64,14 @@ function filePathToDeckPath(filePath: string, rootDeck: string): string {
     return `${rootDeck}::${deckSuffix}`;
   }
   return deckSuffix;
+}
+
+function deckPathToFilePath(deckPath: string, rootDeck: string): string {
+  const prefix = rootDeck ? `${rootDeck}::` : "";
+  if (deckPath.startsWith(prefix)) {
+    return deckPath.slice(prefix.length).replace(/::/g, "/") + ".md";
+  }
+  return deckPath.replace(/::/g, "/") + ".md";
 }
 
 // ─── Pure helpers (no I/O) ───
@@ -197,10 +210,13 @@ async function checkRemote(
   const remoteFront = infos[0].fields.Front?.value ?? "";
   const remoteBack = infos[0].fields.Back?.value ?? "";
 
+  const ankiNoteId = ids[0];
+
   if (!localCard) {
     return {
       pull: {
         uuid,
+        ankiNoteId,
         filePath: mapping.path,
         deckPath: filePathToDeckPath(mapping.path, rootDeck),
         front: remoteFront,
@@ -216,6 +232,7 @@ async function checkRemote(
     return {
       pull: {
         uuid,
+        ankiNoteId,
         filePath: localCard.filePath,
         deckPath: localCard.deckPath,
         front: remoteFront,
@@ -339,7 +356,55 @@ export async function sync(
     }
   }
 
-  // Pass C: Clean up empty plugin-managed decks
+  // Pass C: Discover orphaned Anki notes (no matching Obsidian file/mapping)
+  if (rootDeck) {
+    try {
+      const orphanCardIds = await deps.findCards(`deck:"${rootDeck.replace(/"/g, '""')}"`);
+      const knownUuids = new Set([
+        ...pushedUuids,
+        ...uuidsDeletedFromAnki,
+        ...pullFromAnki.map((p) => p.uuid),
+      ]);
+
+      for (let i = 0; i < orphanCardIds.length; i += 100) {
+        const chunk = orphanCardIds.slice(i, i + 100);
+        const cardInfos = await deps.cardsInfo(chunk);
+        for (const info of cardInfos) {
+          if (!info.note) continue;
+          let uuid = info.fields?.UUID?.value;
+          if (!uuid) {
+            uuid = generateUuid();
+            try {
+              await deps.addTags([info.note], `obsidian-sync::${uuid}`);
+            } catch {
+              continue;
+            }
+          }
+          if (knownUuids.has(uuid)) continue;
+
+          const filePath = deckPathToFilePath(info.deckName, rootDeck);
+          knownUuids.add(uuid);
+          pullFromAnki.push({
+            uuid,
+            ankiNoteId: info.note,
+            filePath,
+            deckPath: info.deckName,
+            front: info.fields.Front?.value ?? "",
+            back: info.fields.Back?.value ?? "",
+          });
+          newState[uuid] = {
+            ankiNoteId: info.note,
+            path: filePath,
+            lastSync: Date.now(),
+          };
+        }
+      }
+    } catch {
+      // Non-fatal — discovery may fail if AnkiConnect version differs
+    }
+  }
+
+  // Pass D: Clean up empty plugin-managed decks
   if (rootDeck) {
     try {
       const allDecks = await deps.deckNames();

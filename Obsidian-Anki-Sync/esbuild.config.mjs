@@ -18,7 +18,7 @@ function syncToVault() {
   }
   const dest = `${testVault}/.obsidian/plugins/obsidian-anki-sync/`;
   try {
-    execSync(`rsync -a --delete main.js manifest.json styles.css "${dest}"`, {
+    execSync(`rsync -a --delete manifest.json dist/ "${dest}"`, {
       stdio: "inherit",
     });
     console.log(`📦 Synced plugin to vault`);
@@ -41,14 +41,16 @@ const syncPlugin = {
 /** @type {esbuild.BuildOptions} */
 const config = {
   entryPoints: ["src/main.ts"],
-  outfile: "main.js",
+  outdir: "dist",
   bundle: true,
   target: "ESNext",
   format: "cjs",
   external: ["obsidian"],
   logLevel: "info",
-  sourcemap: isWatch ? "inline" : false,
-  minify: !isWatch,
+  // sourcemap: isWatch ? "inline" : false,
+  // minify: !isWatch,
+  sourcemap: true,
+  minify: false,
   plugins: isWatch ? [syncPlugin] : [],
 };
 

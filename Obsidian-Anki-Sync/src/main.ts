@@ -1,4 +1,4 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Plugin, TFile } from "obsidian";
 import * as ankiClient from "./ankiClient";
 import { appendBlock, removeBlock, replaceBlock } from "./fileManager";
 import type { State } from "./mappingStore";
@@ -44,16 +44,18 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    const data = (await this.loadData()) as Record<string, unknown> | undefined;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data?.settings as Partial<PluginSettings> | undefined);
   }
 
   async saveSettings(): Promise<void> {
-    await this.saveData(this.settings);
+    const data = (await this.loadData()) as Record<string, unknown> | undefined ?? {};
+    await this.saveData({ ...data, settings: this.settings });
   }
 
   async runSync(): Promise<void> {
-    const state = (await this.loadData()) as State | undefined;
+    const data = (await this.loadData()) as Record<string, unknown> | undefined;
+    const state = data?.state as State | undefined;
     const vault = this.app.vault;
     const rootDeck = this.getEffectiveRootDeck();
 
@@ -75,8 +77,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       return;
     }
 
-    await this.saveSettings();
-    await this.saveData(result.newState);
+    await this.saveData({ settings: this.settings, state: result.newState });
 
     const pulledUuids = new Set(result.pullFromAnki.map((p) => p.uuid));
 
@@ -96,10 +97,15 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
         back: pull.back,
         filePath: pull.filePath,
         deckPath: pull.deckPath,
-        ankiNoteId: result.newState[pull.uuid]?.ankiNoteId,
+        ankiNoteId: pull.ankiNoteId,
         updatedAt: Date.now(),
       };
-      await replaceBlock(vault, pull.filePath, pull.uuid, card).catch(() => {});
+      const file = vault.getAbstractFileByPath(pull.filePath);
+      if (file instanceof TFile) {
+        await replaceBlock(vault, pull.filePath, pull.uuid, card).catch(() => {});
+      } else {
+        await appendBlock(vault, pull.filePath, card).catch(() => {});
+      }
     }
 
     for (const uuid of result.uuidsDeletedFromAnki) {

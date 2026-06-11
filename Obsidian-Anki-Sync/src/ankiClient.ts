@@ -28,6 +28,14 @@ export type NoteInfo = {
   cards: number[];
 };
 
+export type CardInfo = {
+  cardId: number;
+  note: number;
+  deckName: string;
+  fields: Record<string, { value: string }>;
+  modelName: string;
+};
+
 export type CreateNoteParams = {
   deckName: string;
   front: string;
@@ -44,8 +52,12 @@ export type UpdateNoteFieldsParams = {
 
 export async function findNotes(uuid: string): Promise<number[]> {
   const result: unknown = await request("findNotes", { query: `UUID:${uuid}` });
-  if (!Array.isArray(result)) return [];
-  return result.filter((id): id is number => typeof id === "number");
+  if (Array.isArray(result) && result.length > 0) {
+    return result.filter((id): id is number => typeof id === "number");
+  }
+  const tagResult: unknown = await request("findNotes", { query: `tag:obsidian-sync::${uuid}` });
+  if (!Array.isArray(tagResult)) return [];
+  return tagResult.filter((id): id is number => typeof id === "number");
 }
 
 export async function notesInfo(noteIds: number[]): Promise<NoteInfo[]> {
@@ -85,6 +97,10 @@ export async function deleteNotes(noteIds: number[]): Promise<null> {
   return request("deleteNotes", { notes: noteIds });
 }
 
+export async function addTags(noteIds: number[], tags: string): Promise<null> {
+  return request("addTags", { notes: noteIds, tags });
+}
+
 export async function deckNames(): Promise<string[]> {
   return request("deckNames");
 }
@@ -102,6 +118,18 @@ export async function ensureDeck(name: string): Promise<void> {
 
 export async function changeDeck(cards: number[], deckName: string): Promise<null> {
   return request("changeDeck", { cards, deck: deckName });
+}
+
+export async function findNotesByQuery(query: string): Promise<number[]> {
+  const result: unknown = await request("findNotes", { query });
+  if (!Array.isArray(result)) return [];
+  return result.filter((id): id is number => typeof id === "number");
+}
+
+export async function cardsInfo(cardIds: number[]): Promise<CardInfo[]> {
+  const result: unknown = await request("cardsInfo", { cards: cardIds });
+  if (!Array.isArray(result)) return [];
+  return result as CardInfo[];
 }
 
 export async function findCards(query: string): Promise<number[]> {
