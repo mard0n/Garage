@@ -127,7 +127,7 @@ function buildNewState(
   }
 
   for (const { card, mapping } of unchanged) {
-    newState[card.uuid] = { ...mapping };
+    newState[card.uuid] = { ...mapping, path: card.filePath };
   }
 
   for (const { uuid, mapping } of createdMappings) {
@@ -216,8 +216,8 @@ async function checkRemote(
     return {
       pull: {
         uuid,
-        filePath: mapping.path,
-        deckPath: filePathToDeckPath(mapping.path, rootDeck),
+        filePath: localCard.filePath,
+        deckPath: localCard.deckPath,
         front: remoteFront,
         back: remoteBack,
       },
@@ -236,7 +236,6 @@ export async function sync(
   deps: AnkiDeps,
   rootDeck = "",
 ): Promise<SyncResult> {
-  debugger;
   const localByUuid = assignUuids(localCards);
   const { toCreate, toUpdate, toDelete, unchanged } = categorize(
     state,
