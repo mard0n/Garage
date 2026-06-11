@@ -1,8 +1,7 @@
 import * as esbuild from "esbuild";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
-// Load TEST_VAULT from .env manually (no dotenv dependency needed at runtime)
 const envRaw = readFileSync(".env", "utf-8");
 const testVault = envRaw
   .split("\n")
@@ -12,22 +11,32 @@ const testVault = envRaw
   .join("=")
   .trim();
 
-function copyToVault() {
+function syncToVault() {
   if (!testVault) {
-    console.warn("⚠️  TEST_VAULT not set in .env — skipping copy to vault");
+    console.warn("⚠️  TEST_VAULT not set in .env — skipping sync to vault");
     return;
   }
-  const pluginDir = resolve(testVault, ".obsidian", "plugins", "obsidian-anki-sync");
-  if (!existsSync(pluginDir)) {
-    mkdirSync(pluginDir, { recursive: true });
+  const dest = `${testVault}/.obsidian/plugins/obsidian-anki-sync/`;
+  try {
+    execSync(`rsync -a --delete main.js manifest.json styles.css "${dest}"`, {
+      stdio: "inherit",
+    });
+    console.log(`📦 Synced plugin to vault`);
+  } catch {
+    console.error("❌ rsync failed");
   }
-  for (const file of ["main.js", "manifest.json", "styles.css"]) {
-    copyFileSync(file, resolve(pluginDir, file));
-  }
-  console.log(`📦 Copied to ${pluginDir}`);
 }
 
 const isWatch = process.argv.includes("--watch");
+
+const syncPlugin = {
+  name: "sync-to-vault",
+  setup(build) {
+    build.onEnd(() => {
+      syncToVault();
+    });
+  },
+};
 
 /** @type {esbuild.BuildOptions} */
 const config = {
@@ -40,6 +49,7 @@ const config = {
   logLevel: "info",
   sourcemap: isWatch ? "inline" : false,
   minify: !isWatch,
+  plugins: isWatch ? [syncPlugin] : [],
 };
 
 async function build() {
@@ -49,7 +59,7 @@ async function build() {
     console.log("👀 Watching for changes...");
   } else {
     await esbuild.build(config);
-    copyToVault();
+    syncToVault();
   }
 }
 

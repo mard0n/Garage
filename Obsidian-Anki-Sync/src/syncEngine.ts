@@ -1,4 +1,8 @@
-import type { CreateNoteParams, NoteInfo, UpdateNoteFieldsParams } from "./ankiClient";
+import type {
+  CreateNoteParams,
+  NoteInfo,
+  UpdateNoteFieldsParams,
+} from "./ankiClient";
 import type { Mapping, State } from "./mappingStore";
 import type { Card } from "./models";
 
@@ -9,6 +13,11 @@ export type AnkiDeps = {
   updateNoteFields: (params: UpdateNoteFieldsParams) => Promise<null>;
   deleteNotes: (noteIds: number[]) => Promise<null>;
   ensureDeck: (name: string) => Promise<void>;
+  ensureModel: () => Promise<void>;
+  changeDeck: (cards: number[], deckName: string) => Promise<null>;
+  deckNames: () => Promise<string[]>;
+  findCards: (query: string) => Promise<number[]>;
+  deleteDecks: (decks: string[]) => Promise<null>;
 };
 
 export type PullCard = {
@@ -93,7 +102,10 @@ function categorize(
     }
   }
 
-  const toDelete = [...remaining.entries()].map(([uuid, mapping]) => ({ uuid, mapping }));
+  const toDelete = [...remaining.entries()].map(([uuid, mapping]) => ({
+    uuid,
+    mapping,
+  }));
 
   return { toCreate, toUpdate, toDelete, unchanged };
 }
@@ -107,7 +119,11 @@ function buildNewState(
   const newState: State = {};
 
   for (const { card, mapping } of toUpdate) {
-    newState[card.uuid] = { ...mapping, path: card.filePath, lastSync: Date.now() };
+    newState[card.uuid] = {
+      ...mapping,
+      path: card.filePath,
+      lastSync: Date.now(),
+    };
   }
 
   for (const { card, mapping } of unchanged) {
@@ -129,18 +145,40 @@ function buildNewState(
 
 // ─── I/O helpers (call Anki) ───
 
-async function recoverNoteId(card: Card, deps: AnkiDeps): Promise<number | null> {
+async function recoverNoteId(
+  card: Card,
+  deps: AnkiDeps,
+): Promise<number | null> {
   if (!card.uuid) return null;
   const ids = await deps.findNotes(card.uuid);
   return ids.length > 0 ? ids[0] : null;
 }
 
-async function pushUpdate(card: Card, mapping: Mapping, deps: AnkiDeps): Promise<void> {
-  await deps.updateNoteFields({
-    noteId: mapping.ankiNoteId,
-    front: card.front,
-    back: card.back,
-  });
+async function pushUpdate(
+  card: Card,
+  mapping: Mapping,
+  deps: AnkiDeps,
+  rootDeck: string,
+): Promise<boolean> {
+  try {
+    await deps.updateNoteFields({
+      noteId: mapping.ankiNoteId,
+      front: card.front,
+      back: card.back,
+    });
+
+    const oldDeck = filePathToDeckPath(mapping.path, rootDeck);
+    if (oldDeck !== card.deckPath) {
+      const infos = await deps.notesInfo([mapping.ankiNoteId]);
+      if (infos.length > 0 && infos[0].cards.length > 0) {
+        await deps.changeDeck(infos[0].cards, card.deckPath);
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function checkRemote(
@@ -172,7 +210,8 @@ async function checkRemote(
     };
   }
 
-  const changed = remoteFront !== localCard.front || remoteBack !== localCard.back;
+  const changed =
+    remoteFront !== localCard.front || remoteBack !== localCard.back;
   if (changed && localCard.updatedAt <= mapping.lastSync) {
     return {
       pull: {
@@ -197,8 +236,19 @@ export async function sync(
   deps: AnkiDeps,
   rootDeck = "",
 ): Promise<SyncResult> {
+  debugger;
   const localByUuid = assignUuids(localCards);
-  const { toCreate, toUpdate, toDelete, unchanged } = categorize(state, localByUuid);
+  const { toCreate, toUpdate, toDelete, unchanged } = categorize(
+    state,
+    localByUuid,
+  );
+
+  // Ensure note type exists (best-effort)
+  try {
+    await deps.ensureModel();
+  } catch {
+    // Non-fatal — user may need to create the model manually
+  }
 
   // Pass A: Push local changes to Anki
   const pushedUuids = new Set<string>();
@@ -206,7 +256,10 @@ export async function sync(
   let createdCount = 0;
 
   // Ensure all target decks exist before creating notes
-  const neededDecks = new Set(toCreate.map((c) => c.deckPath));
+  const neededDecks = new Set([
+    ...toCreate.map((c) => c.deckPath),
+    ...toUpdate.map(({ card }) => card.deckPath),
+  ]);
   for (const deck of neededDecks) {
     await deps.ensureDeck(deck);
   }
@@ -216,7 +269,11 @@ export async function sync(
     if (existingId !== null) {
       createdMappings.push({
         uuid: card.uuid,
-        mapping: { ankiNoteId: existingId, path: card.filePath, lastSync: Date.now() },
+        mapping: {
+          ankiNoteId: existingId,
+          path: card.filePath,
+          lastSync: Date.now(),
+        },
       });
     } else {
       const noteId = await deps.createNote({
@@ -227,7 +284,11 @@ export async function sync(
       });
       createdMappings.push({
         uuid: card.uuid,
-        mapping: { ankiNoteId: noteId, path: card.filePath, lastSync: Date.now() },
+        mapping: {
+          ankiNoteId: noteId,
+          path: card.filePath,
+          lastSync: Date.now(),
+        },
       });
       createdCount++;
     }
@@ -235,12 +296,23 @@ export async function sync(
   }
 
   for (const { card, mapping } of toUpdate) {
-    await pushUpdate(card, mapping, deps);
+    const ok = await pushUpdate(card, mapping, deps, rootDeck);
+    if (!ok) {
+      const noteId = await deps.createNote({
+        deckName: card.deckPath,
+        front: card.front,
+        back: card.back,
+        uuid: card.uuid,
+      });
+      mapping.ankiNoteId = noteId;
+    }
     pushedUuids.add(card.uuid);
   }
 
   for (const { mapping } of toDelete) {
-    await deps.deleteNotes([mapping.ankiNoteId]);
+    if (mapping.ankiNoteId != null) {
+      await deps.deleteNotes([mapping.ankiNoteId]);
+    }
   }
 
   // Pass B: Check remaining cards against Anki
@@ -252,13 +324,35 @@ export async function sync(
     if (pushedUuids.has(uuid)) continue;
 
     const localCard = localByUuid.get(uuid);
-    const { pull, deleted } = await checkRemote(uuid, mapping, localCard, deps, rootDeck);
+    const { pull, deleted } = await checkRemote(
+      uuid,
+      mapping,
+      localCard,
+      deps,
+      rootDeck,
+    );
 
     if (deleted) {
       uuidsDeletedFromAnki.push(uuid);
       delete newState[uuid];
     } else if (pull) {
       pullFromAnki.push(pull);
+    }
+  }
+
+  // Pass C: Clean up empty plugin-managed decks
+  if (rootDeck) {
+    try {
+      const allDecks = await deps.deckNames();
+      for (const deck of allDecks) {
+        if (!deck.startsWith(`${rootDeck}::`)) continue;
+        const cards = await deps.findCards(`deck:"${deck.replace(/"/g, '""')}"`);
+        if (cards.length === 0) {
+          await deps.deleteDecks([deck]);
+        }
+      }
+    } catch {
+      // Non-fatal — deleteDecks or findCards may not be available
     }
   }
 

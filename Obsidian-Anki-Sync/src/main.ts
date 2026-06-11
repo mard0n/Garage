@@ -81,9 +81,11 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     const pulledUuids = new Set(result.pullFromAnki.map((p) => p.uuid));
 
     for (const card of allCards) {
-      if (!card.ankiNoteId) continue;
+      const mapping = result.newState[card.uuid];
+      if (!mapping) continue;
       if (pulledUuids.has(card.uuid)) continue;
 
+      card.ankiNoteId = mapping.ankiNoteId;
       await replaceBlock(vault, card.filePath, card.uuid, card).catch(() => {});
     }
 

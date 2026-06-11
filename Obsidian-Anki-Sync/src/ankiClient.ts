@@ -8,7 +8,7 @@ async function request(action: string, params: Record<string, unknown> = {}) {
   });
   const body = await res.json();
   if (body.error) {
-    throw new Error(body.error);
+    throw new Error(`[${action}] ${body.error}`);
   }
   return body.result;
 }
@@ -43,7 +43,9 @@ export type UpdateNoteFieldsParams = {
 };
 
 export async function findNotes(uuid: string): Promise<number[]> {
-  return request("findNotes", { query: `UUID:${uuid}` });
+  const result: unknown = await request("findNotes", { query: `UUID:${uuid}` });
+  if (!Array.isArray(result)) return [];
+  return result.filter((id): id is number => typeof id === "number");
 }
 
 export async function notesInfo(noteIds: number[]): Promise<NoteInfo[]> {
@@ -51,7 +53,7 @@ export async function notesInfo(noteIds: number[]): Promise<NoteInfo[]> {
 }
 
 export async function createNote(params: CreateNoteParams): Promise<number> {
-  return request("addNote", {
+  const result: unknown = await request("addNote", {
     note: {
       deckName: params.deckName,
       modelName: "Basic-Obsidian",
@@ -65,6 +67,10 @@ export async function createNote(params: CreateNoteParams): Promise<number> {
       },
     },
   });
+  if (typeof result !== "number") {
+    throw new Error(`addNote returned unexpected result: ${String(result)}`);
+  }
+  return result;
 }
 
 export async function updateNoteFields(params: UpdateNoteFieldsParams): Promise<null> {
@@ -96,4 +102,49 @@ export async function ensureDeck(name: string): Promise<void> {
 
 export async function changeDeck(cards: number[], deckName: string): Promise<null> {
   return request("changeDeck", { cards, deck: deckName });
+}
+
+export async function findCards(query: string): Promise<number[]> {
+  const result: unknown = await request("findCards", { query });
+  if (!Array.isArray(result)) return [];
+  return result.filter((id): id is number => typeof id === "number");
+}
+
+export async function deleteDecks(decks: string[]): Promise<null> {
+  return request("deleteDecks", { decks, cardsToo: true });
+}
+
+export async function modelNames(): Promise<string[]> {
+  return request("modelNames");
+}
+
+export async function createModel(): Promise<null> {
+  return request("createModel", {
+    modelName: "Basic-Obsidian",
+    inOrderFields: ["Front", "Back", "UUID"],
+    css: ".card {\n  font-family: arial;\n  font-size: 20px;\n  text-align: center;\n  color: black;\n  background-color: white;\n}",
+    cardTemplates: [
+      {
+        Name: "Card 1",
+        Front: "{{Front}}",
+        Back: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+      },
+    ],
+  });
+}
+
+export async function ensureModel(): Promise<void> {
+  const names: unknown = await request("modelNames");
+  if (Array.isArray(names) && names.includes("Basic-Obsidian")) return;
+
+  // Model doesn't exist; try to create it. If creation fails (e.g. incompatible
+  // AnkiConnect version), the user can create "Basic-Obsidian" manually with
+  // Front, Back, UUID fields.
+  try {
+    await createModel();
+  } catch {
+    // Silently ignore — model creation may fail if it's a newer AnkiConnect
+    // that handles model creation differently, or if the model already exists
+    // but wasn't returned by modelNames.
+  }
 }

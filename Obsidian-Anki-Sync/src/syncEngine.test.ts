@@ -82,6 +82,11 @@ function makeDeps(existing: Record<string, ExistingNote> = {}): AnkiDeps {
     updateNoteFields: vi.fn().mockResolvedValue(null),
     deleteNotes: vi.fn().mockResolvedValue(null),
     ensureDeck: vi.fn().mockResolvedValue(undefined),
+    ensureModel: vi.fn().mockResolvedValue(undefined),
+    changeDeck: vi.fn().mockResolvedValue(null),
+    deckNames: vi.fn().mockResolvedValue([]),
+    findCards: vi.fn().mockResolvedValue([]),
+    deleteDecks: vi.fn().mockResolvedValue(null),
   };
 }
 
