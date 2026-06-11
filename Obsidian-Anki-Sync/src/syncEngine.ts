@@ -8,6 +8,7 @@ export type AnkiDeps = {
   createNote: (params: CreateNoteParams) => Promise<number>;
   updateNoteFields: (params: UpdateNoteFieldsParams) => Promise<null>;
   deleteNotes: (noteIds: number[]) => Promise<null>;
+  ensureDeck: (name: string) => Promise<void>;
 };
 
 export type PullCard = {
@@ -203,6 +204,12 @@ export async function sync(
   const pushedUuids = new Set<string>();
   const createdMappings: Array<{ uuid: string; mapping: Mapping }> = [];
   let createdCount = 0;
+
+  // Ensure all target decks exist before creating notes
+  const neededDecks = new Set(toCreate.map((c) => c.deckPath));
+  for (const deck of neededDecks) {
+    await deps.ensureDeck(deck);
+  }
 
   for (const card of toCreate) {
     const existingId = await recoverNoteId(card, deps);

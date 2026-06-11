@@ -87,6 +87,13 @@ export async function createDeck(name: string): Promise<null> {
   return request("createDeck", { deck: name });
 }
 
+export async function ensureDeck(name: string): Promise<void> {
+  const names: string[] = await request("deckNames");
+  if (!names.includes(name)) {
+    await request("createDeck", { deck: name });
+  }
+}
+
 export async function changeDeck(cards: number[], deckName: string): Promise<null> {
   return request("changeDeck", { cards, deck: deckName });
 }
