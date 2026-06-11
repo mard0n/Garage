@@ -36,9 +36,8 @@ obsidian-anki-sync/
     ├── mappingStore.ts   # Local JSON state (step 6)
     ├── ankiClient.ts     # AnkiConnect HTTP wrapper (step 7)
     ├── syncEngine.ts     # Sync logic (step 8)
-    ├── watchers.ts       # File listeners, timers (step 10)
-    ├── fileManager.ts    # File creation from deck paths (step 11)
-    └── settings.ts       # Settings tab (step 12)
+    ├── fileManager.ts    # File creation from deck paths (step 10)
+    └── settings.ts       # Settings tab (step 11)
 ```
 
 ## Dev Workflow

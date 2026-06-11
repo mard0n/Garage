@@ -9,8 +9,7 @@ Requirements:
 * Bidirectional sync
 * Obsidian is source of truth during conflicts
 * Sync on startup
-* Sync every 5 mins in background
-* Sync on a button press on Obsidian Status bar
+* Manual sync via status bar button
 * Automatic card discovery
 * Automatic card creation
 * Automatic folder/deck mapping
@@ -44,8 +43,6 @@ Reverse:
 
 ```text
 Anki
- ↓
-Poll AnkiConnect
  ↓
 Sync Engine
  ↓
@@ -271,26 +268,6 @@ Trigger:
 
 ```ts
 plugin.addStatusBarItem()
-```
-
----
-
-## Background Polling
-
-Frequency:
-
-```text
-5 mins
-```
-
-Behavior:
-
-```text
-poll Anki
-↓
-find changed notes
-↓
-sync back
 ```
 
 ---
@@ -561,7 +538,6 @@ serializer.ts
 syncEngine.ts
 ankiClient.ts
 mappingStore.ts
-watchers.ts
 fileManager.ts
 settings.ts
 main.ts
@@ -603,13 +579,6 @@ mappingStore.ts
 local cache/state
 ```
 
-watchers.ts
-
-```text
-file listeners
-timers
-```
-
 ---
 
 # Out Of Scope (MVP)
@@ -626,6 +595,8 @@ Not supported:
 * Shared vault sync
 * Mobile support
 * Rich media
+* Background polling / auto-sync timer
+* File save watchers (auto-sync on save)
 
 ---
 
@@ -655,11 +626,11 @@ Never create duplicates from repeated sync.
 User should be able to:
 
 1. Write card in markdown
-2. Save file
+2. Click sync button
 3. Card appears in Anki
 4. Edit card in either system
-5. Reopen vault
-6. Everything stays synchronized
+5. Click sync
+6. Changes propagate to the other system
 7. Rename folders/files
 8. Decks update automatically
 9. Delete cards
