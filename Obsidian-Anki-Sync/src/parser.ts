@@ -47,14 +47,15 @@ function extractAnkiFencedBlocks(markdown: string): Block[] {
   return blocks;
 }
 
-function parseMetadataBlock(lines: string[]): {
-  uuid: string;
+function parseMetadataBlock(block: Block): {
+  uuid?: string;
   ankiNoteId?: number;
   rest: string[];
 } {
-  let uuid = "";
+  const lines = block.raw.split("\n");
+  let uuid: string | undefined;
   let ankiNoteId: number | undefined;
-  let restStart = 0;
+  let restStart = lines.length;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -113,9 +114,7 @@ export function parseCards(markdown: string, filePath: string, rootDeck = ""): C
   const cards: Card[] = [];
 
   for (const block of blocks) {
-    const lines = block.raw.split("\n");
-
-    const { uuid, ankiNoteId, rest } = parseMetadataBlock(lines);
+    const { uuid, ankiNoteId, rest } = parseMetadataBlock(block);
 
     const { content: front, remaining: afterFront } = extractTagContent(rest, "front");
     if (!front) continue;

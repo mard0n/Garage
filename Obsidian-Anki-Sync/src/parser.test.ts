@@ -51,7 +51,7 @@ World
 \`\`\`\``;
     const cards = parseCards(md, "NoMeta.md");
     expect(cards).toHaveLength(1);
-    expect(cards[0].uuid).toBe("");
+    expect(cards[0].uuid).toBeUndefined();
     expect(cards[0].ankiNoteId).toBeUndefined();
   });
 

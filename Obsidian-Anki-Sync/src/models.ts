@@ -1,5 +1,5 @@
 export type Card = {
-  uuid: string;
+  uuid?: string;
   ankiNoteId?: number;
   front: string;
   back: string;

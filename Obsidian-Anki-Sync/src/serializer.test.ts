@@ -37,11 +37,11 @@ describe("serializeCard", () => {
   });
 
   it("round-trips a card without uuid", () => {
-    const card = makeCard({ uuid: "" });
+    const card = makeCard({ uuid: undefined });
     const md = serializeCard(card);
     const parsed = parseCards(md, card.filePath);
     expect(parsed).toHaveLength(1);
-    expect(parsed[0].uuid).toBe("");
+    expect(parsed[0].uuid).toBeUndefined();
   });
 
   it("round-trips a card with a 3-backtick code block", () => {
