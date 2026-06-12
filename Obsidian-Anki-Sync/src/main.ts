@@ -120,6 +120,40 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
           }
           break;
         }
+        case "updateNote": {
+          try {
+            await ankiClient.updateNoteFields({
+              noteId: action.ankiNoteId,
+              front: action.front,
+              back: action.back,
+            });
+          } catch {
+            // Note was deleted in Anki — recreate
+            const newId = await ankiClient.createNote({
+              deckName: action.card.deckPath,
+              front: action.front,
+              back: action.back,
+              uuid: action.uuid,
+            });
+            await replaceBlock(vault, action.filePath, action.uuid, {
+              ...action.card,
+              uuid: action.uuid,
+              ankiNoteId: newId,
+            });
+            newState = setMapping(newState, action.uuid, {
+              ankiNoteId: newId,
+              path: action.filePath,
+              lastSync: Date.now(),
+            });
+            break;
+          }
+          newState = setMapping(newState, action.uuid, {
+            ankiNoteId: action.ankiNoteId,
+            path: action.filePath,
+            lastSync: Date.now(),
+          });
+          break;
+        }
       }
     }
 
