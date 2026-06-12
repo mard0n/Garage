@@ -70,6 +70,23 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     const vault = this.app.vault;
     const rootDeck = this.getEffectiveRootDeck();
 
+    // Clean up empty subdecks under root
+    try {
+      const allDecks = await ankiClient.deckNames();
+      const prefix = `${rootDeck}::`;
+      const emptyDecks: string[] = [];
+      for (const deck of allDecks) {
+        if (deck === rootDeck || !deck.startsWith(prefix)) continue;
+        const cards = await ankiClient.findCards(`deck:"${deck}"`);
+        if (cards.length === 0) emptyDecks.push(deck);
+      }
+      if (emptyDecks.length > 0) {
+        await ankiClient.deleteDecks(emptyDecks);
+      }
+    } catch {
+      // Skip cleanup if Anki unreachable
+    }
+
     // Scan all cards
     const allCards: Card[] = [];
     for (const file of vault.getMarkdownFiles()) {
