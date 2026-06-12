@@ -38,7 +38,7 @@ describe("parseCards", () => {
     expect(cards).toHaveLength(2);
   });
 
-  it("handles missing metadata", () => {
+  it("skips blocks without id: metadata", () => {
     const md = `\`\`\`\`anki
 
 [front]
@@ -49,10 +49,8 @@ Hello
 World
 [/back]
 \`\`\`\``;
-    const cards = parseCards(md, "NoMeta.md");
-    expect(cards).toHaveLength(1);
-    expect(cards[0].uuid).toBeUndefined();
-    expect(cards[0].ankiNoteId).toBeUndefined();
+    const cards = parseCards(md, "NoId.md");
+    expect(cards).toHaveLength(0);
   });
 
   it("handles missing ankiNoteId only", () => {
@@ -125,6 +123,7 @@ World
 
   it("preserves blank lines in front/back content", () => {
     const md = `\`\`\`\`anki
+id: blank-lines-test
 
 [front]
 Line 1
@@ -146,6 +145,8 @@ Back 3
   it("parses inline anki blocks (not separated by blank lines)", () => {
     const md = `some text
 \`\`\`\`anki
+id: inline-test
+
 [front]
 Q
 [/front]
@@ -176,6 +177,8 @@ A
 
   it("parses 4-backtick fence with nested 3-backtick code block", () => {
     const md = `\`\`\`\`anki
+id: nested-code-test
+
 \`\`\`js
 const x = 1;
 \`\`\`
@@ -216,7 +219,8 @@ Logs hello
   });
 
   it("parses 5-backtick fence with 4-backtick code inside", () => {
-    const md = "`````anki\n````\ntest\n````\n\n[front]\nQ\n[/front]\n\n[back]\nA\n[/back]\n`````";
+    const md =
+      "`````anki\nid: five-backtick-test\n\n````\ntest\n````\n\n[front]\nQ\n[/front]\n\n[back]\nA\n[/back]\n`````";
     const cards = parseCards(md, "FiveBacktick.md");
     expect(cards).toHaveLength(1);
     expect(cards[0].front).toBe("Q");

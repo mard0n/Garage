@@ -64,11 +64,7 @@ export async function replaceBlock(
   await vault.modify(file, result.join("\n"));
 }
 
-export async function removeBlock(
-  vault: Vault,
-  filePath: string,
-  uuid: string,
-): Promise<void> {
+export async function removeBlock(vault: Vault, filePath: string, uuid: string): Promise<void> {
   const file = vault.getAbstractFileByPath(filePath);
   if (!(file instanceof TFile)) return;
 
@@ -111,11 +107,7 @@ export async function removeBlock(
   await vault.modify(file, result.join("\n"));
 }
 
-export async function appendBlock(
-  vault: Vault,
-  filePath: string,
-  card: Card,
-): Promise<void> {
+export async function appendBlock(vault: Vault, filePath: string, card: Card): Promise<void> {
   const file = vault.getAbstractFileByPath(filePath);
   if (!(file instanceof TFile)) {
     await ensureParentFolder(vault, filePath);

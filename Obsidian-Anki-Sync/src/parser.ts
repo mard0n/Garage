@@ -97,11 +97,7 @@ function extractTagContent(block: Block, tag: string): { content: string } {
   return { content: "" };
 }
 
-export function parseCards(
-  markdown: string,
-  filePath: string,
-  rootDeck = "",
-): Card[] {
+export function parseCards(markdown: string, filePath: string, rootDeck = ""): Card[] {
   const deckPath = filePathToDeckPath(filePath, rootDeck);
 
   const blocks = extractAnkiFencedBlocks(markdown);
@@ -109,6 +105,7 @@ export function parseCards(
 
   for (const block of blocks) {
     const { uuid, ankiNoteId } = parseMetadataBlock(block);
+    if (!uuid) continue;
 
     const { content: front } = extractTagContent(block, "front");
     if (!front) continue;

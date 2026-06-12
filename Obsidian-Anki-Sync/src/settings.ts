@@ -26,7 +26,9 @@ export class AnkiSyncSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Root deck name")
-      .setDesc("Top-level Anki deck name. When empty, the vault name is used. Folder hierarchy is preserved as subdecks.")
+      .setDesc(
+        "Top-level Anki deck name. When empty, the vault name is used. Folder hierarchy is preserved as subdecks.",
+      )
       .addText((text) =>
         text
           .setPlaceholder(this.app.vault.getName())

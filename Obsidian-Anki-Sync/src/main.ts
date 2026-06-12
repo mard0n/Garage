@@ -1,14 +1,11 @@
 import { Notice, Plugin, TFile } from "obsidian";
 import * as ankiClient from "./ankiClient";
 import { appendBlock, removeBlock, replaceBlock } from "./fileManager";
+import { setMapping } from "./mappingStore";
 import type { State } from "./mappingStore";
 import type { Card } from "./models";
 import { parseCards } from "./parser";
-import {
-  AnkiSyncSettingTab,
-  DEFAULT_SETTINGS,
-  type PluginSettings,
-} from "./settings";
+import { AnkiSyncSettingTab, DEFAULT_SETTINGS, type PluginSettings } from "./settings";
 import { type SyncResult, sync } from "./syncEngine";
 
 export default class ObsidianAnkiSyncPlugin extends Plugin {
@@ -39,9 +36,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     if (ok) {
       console.log("Obsidian Anki Sync: Anki connected");
     } else {
-      console.log(
-        "Obsidian Anki Sync: Anki unreachable (start Anki + AnkiConnect)",
-      );
+      console.log("Obsidian Anki Sync: Anki unreachable (start Anki + AnkiConnect)");
     }
   }
 
@@ -59,8 +54,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
   }
 
   async saveSettings(): Promise<void> {
-    const data =
-      ((await this.loadData()) as Record<string, unknown> | undefined) ?? {};
+    const data = ((await this.loadData()) as Record<string, unknown> | undefined) ?? {};
     await this.saveData({ ...data, settings: this.settings });
   }
 
@@ -76,21 +70,59 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       const cards = parseCards(content, file.path, rootDeck);
       for (const card of cards) {
         card.updatedAt = file.stat.mtime;
-        card.uuid = card.uuid ? card.uuid : crypto.randomUUID();
       }
       allCards.push(...cards);
     }
 
     let result: SyncResult;
     try {
-      result = await sync(allCards, state ?? {}, ankiClient, rootDeck);
+      result = sync(allCards, state ?? {});
     } catch (err) {
-      new Notice(
-        `Sync failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      new Notice(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
       return;
     }
 
-    // await this.saveData({ settings: this.settings, state: result.newState });
+    let newState: State = state ?? {};
+
+    for (const action of result.actions) {
+      switch (action.type) {
+        case "createNote": {
+          try {
+            let ankiNoteId: number;
+            const existing = await ankiClient.findNotes(action.uuid);
+            if (existing.length > 0) {
+              ankiNoteId = existing[0];
+            } else {
+              await ankiClient.ensureDeck(action.deckName);
+              await ankiClient.ensureModel();
+              ankiNoteId = await ankiClient.createNote({
+                deckName: action.deckName,
+                front: action.front,
+                back: action.back,
+                uuid: action.uuid,
+              });
+            }
+
+            newState = setMapping(newState, action.uuid, {
+              ankiNoteId,
+              path: action.filePath,
+              lastSync: Date.now(),
+            });
+
+            const updatedCard: Card = {
+              ...action.card,
+              uuid: action.uuid,
+              ankiNoteId,
+            };
+            await replaceBlock(vault, action.filePath, action.uuid, updatedCard);
+          } catch (err) {
+            console.error(`Failed to create note ${action.uuid}:`, err);
+          }
+          break;
+        }
+      }
+    }
+
+    await this.saveData({ settings: this.settings, state: newState });
   }
 }

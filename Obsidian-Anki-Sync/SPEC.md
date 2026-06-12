@@ -13,7 +13,7 @@ Requirements:
 * Automatic card discovery
 * Automatic card creation
 * Automatic file creation from Anki cards
-* Automatic ID generation
+* User-provided ID required (blocks without `id:` are silently skipped)
 * Vault mapped to a single configurable root deck (1 vault → 1 root deck, hierarchy preserved)
 * Deletion sync both directions
 * MVP supports Basic note type only
@@ -129,8 +129,8 @@ Rules:
 * Blank lines preserved
 * Markdown preserved
 * Code blocks preserved (use 3 backticks inside the card)
-* Metadata required after first sync
-* Plugin inserts metadata automatically
+* `id:` field is required — blocks without it are silently skipped by the parser
+* Plugin writes `ankiNoteId:` into the block after creating the note in Anki
 
 ---
 
@@ -271,10 +271,12 @@ Never allow Anki to overwrite newer Obsidian content.
 
 ## Obsidian → Anki
 
-User writes:
+User writes a card block with `id:`:
 
 ````markdown
 ```anki
+id: 8b2c9d11-58f2-49a4-9cb9-53b0f73df887
+
 [front]
 Question
 [/front]
@@ -285,27 +287,29 @@ Answer
 ```
 ````
 
+Blocks without `id:` are silently skipped by the parser.
+
 Flow:
 
 ```text
-detect missing id
+parseCards → uuid present
 ↓
-generate UUID
+sync() → uuid not in state → createNote action
 ↓
-detect missing ankiNoteId
+findNotes(uuid) → identity recovery (no duplicate if state was lost)
 ↓
-create Anki note
+ensureDeck + ensureModel + createNote
 ↓
-receive note ID
+inject ankiNoteId into block via replaceBlock
 ↓
-inject metadata
+save mapping { ankiNoteId, path, lastSync }
 ```
 
-Result:
+Result — plugin writes `ankiNoteId:` into the block:
 
 ````markdown
 ```anki
-id: uuid
+id: 8b2c9d11-58f2-49a4-9cb9-53b0f73df887
 ankiNoteId: 12345
 
 [front]

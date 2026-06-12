@@ -1,42 +1,46 @@
-import type {
-  CardInfo,
-  CreateNoteParams,
-  NoteInfo,
-  UpdateNoteFieldsParams,
-} from "./ankiClient";
-import type { Mapping, State } from "./mappingStore";
+import { getMapping } from "./mappingStore";
+import type { State } from "./mappingStore";
 import type { Card } from "./models";
 
-export type SyncResult = {};
+// ─── Action types ───
 
-export type AnkiClientDeps = {
-  findNotes: (uuid: string) => Promise<number[]>;
-  notesInfo: (noteIds: number[]) => Promise<NoteInfo[]>;
-  createNote: (params: CreateNoteParams) => Promise<number>;
-  updateNoteFields: (params: UpdateNoteFieldsParams) => Promise<null>;
-  deleteNotes: (noteIds: number[]) => Promise<null>;
-  ensureDeck: (name: string) => Promise<void>;
-  ensureModel: () => Promise<void>;
-  changeDeck: (cards: number[], deckName: string) => Promise<null>;
-  deckNames: () => Promise<string[]>;
-  findCards: (query: string) => Promise<number[]>;
-  cardsInfo: (cardIds: number[]) => Promise<CardInfo[]>;
-  addTags: (noteIds: number[], tags: string) => Promise<null>;
-  deleteDecks: (decks: string[]) => Promise<null>;
-  findNotesByQuery: (query: string) => Promise<number[]>;
+export type CreateNoteAction = {
+  type: "createNote";
+  uuid: string;
+  deckName: string;
+  front: string;
+  back: string;
+  filePath: string;
+  card: Card;
+};
+
+export type SyncAction = CreateNoteAction;
+
+export type SyncResult = {
+  actions: SyncAction[];
 };
 
 // ─── Main sync ───
-export async function sync(
-  localCards: Card[],
-  state: State,
-  ankiClient: AnkiClientDeps,
-  rootDeck = "",
-): Promise<SyncResult> {
+export function sync(localCards: Card[], state: State): SyncResult {
+  const actions: SyncAction[] = [];
+
   for (const localCard of localCards) {
-    if (state[localCard.uuid]) {
-    } else {
+    const uuid = localCard.uuid;
+    if (!uuid) continue;
+    const mapping = getMapping(state, uuid);
+
+    if (!mapping) {
+      actions.push({
+        type: "createNote",
+        uuid,
+        deckName: localCard.deckPath,
+        front: localCard.front,
+        back: localCard.back,
+        filePath: localCard.filePath,
+        card: localCard,
+      });
     }
   }
-  return {};
+
+  return { actions };
 }

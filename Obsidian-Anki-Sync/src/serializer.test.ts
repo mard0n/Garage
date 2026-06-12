@@ -36,14 +36,6 @@ describe("serializeCard", () => {
     expect(parsed[0].ankiNoteId).toBeUndefined();
   });
 
-  it("round-trips a card without uuid", () => {
-    const card = makeCard({ uuid: undefined });
-    const md = serializeCard(card);
-    const parsed = parseCards(md, card.filePath);
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].uuid).toBeUndefined();
-  });
-
   it("round-trips a card with a 3-backtick code block", () => {
     const card = makeCard({ front: "Example:\n```js\nconst x = 1;\n```" });
     const md = serializeCard(card);
