@@ -30,7 +30,24 @@ export type UpdatePathAction = {
   filePath: string;
 };
 
-export type SyncAction = CreateNoteAction | UpdateNoteAction | UpdatePathAction;
+export type DeleteNoteAction = {
+  type: "deleteNote";
+  ankiNoteId: number;
+  uuid: string;
+};
+
+export type RemoveBlockAction = {
+  type: "removeBlock";
+  filePath: string;
+  uuid: string;
+};
+
+export type SyncAction =
+  | CreateNoteAction
+  | UpdateNoteAction
+  | UpdatePathAction
+  | DeleteNoteAction
+  | RemoveBlockAction;
 
 export type SyncResult = {
   actions: SyncAction[];
@@ -70,6 +87,15 @@ export function sync(localCards: Card[], state: State): SyncResult {
           card: localCard,
         });
       }
+    }
+  }
+
+  // Detect cards deleted from Obsidian (in state but not in local cards)
+  const localUuids = new Set(localCards.map((c) => c.uuid).filter(Boolean));
+  for (const [uuid, mapping] of Object.entries(state)) {
+    if (!localUuids.has(uuid)) {
+      actions.push({ type: "deleteNote", ankiNoteId: mapping.ankiNoteId, uuid });
+      actions.push({ type: "removeBlock", filePath: mapping.path, uuid });
     }
   }
 

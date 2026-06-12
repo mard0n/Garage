@@ -1,7 +1,7 @@
 import { Notice, Plugin, TFile } from "obsidian";
 import * as ankiClient from "./ankiClient";
 import { appendBlock, removeBlock, replaceBlock } from "./fileManager";
-import { setMapping } from "./mappingStore";
+import { removeMapping, setMapping } from "./mappingStore";
 import type { State } from "./mappingStore";
 import type { Card } from "./models";
 import { parseCards } from "./parser";
@@ -82,7 +82,6 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     }
 
     let result: SyncResult;
-    console.log("oldState", state);
     try {
       result = sync(allCards, state ?? {});
     } catch (err) {
@@ -96,7 +95,8 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
 
     let created = 0,
       updated = 0,
-      moved = 0;
+      moved = 0,
+      deleted = 0;
 
     for (const action of result.actions) {
       switch (action.type) {
@@ -175,6 +175,27 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
           });
           break;
         }
+        case "deleteNote": {
+          deleted++;
+          try {
+            await ankiClient.deleteNotes([action.ankiNoteId]);
+          } catch (err) {
+            console.error(`Failed to delete note ${action.uuid}:`, err);
+          }
+          newState = removeMapping(newState, action.uuid);
+          break;
+        }
+        case "removeBlock": {
+          const file = vault.getAbstractFileByPath(action.filePath);
+          if (file instanceof TFile) {
+            try {
+              await removeBlock(vault, action.filePath, action.uuid);
+            } catch (err) {
+              console.error(`Failed to remove block ${action.uuid}:`, err);
+            }
+          }
+          break;
+        }
         case "updatePath": {
           moved++;
           const current = newState[action.uuid];
@@ -193,11 +214,10 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     if (created) parts.push(`${created} created`);
     if (updated) parts.push(`${updated} updated`);
     if (moved) parts.push(`${moved} moved`);
+    if (deleted) parts.push(`${deleted} deleted`);
     new Notice(
       parts.length > 0 ? `Sync: ${parts.join(", ")}` : "Sync: nothing to do",
     );
-
-    console.log("newState", newState);
     await this.saveData({ settings: this.settings, state: newState });
   }
 }

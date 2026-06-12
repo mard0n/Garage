@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type State, emptyState, setMapping } from "./mappingStore";
 import type { Card } from "./models";
 import { sync } from "./syncEngine";
-import type { CreateNoteAction, UpdateNoteAction, UpdatePathAction } from "./syncEngine";
+import type { CreateNoteAction, UpdateNoteAction, UpdatePathAction, DeleteNoteAction, RemoveBlockAction } from "./syncEngine";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -159,7 +159,7 @@ describe("syncEngine", () => {
       );
 
       const result = sync([newCard, updatedCard, unchangedCard], state);
-      expect(result.actions).toHaveLength(2);
+      expect(result.actions).toHaveLength(4);
 
       const createAction = result.actions.find((a) => a.type === "createNote") as CreateNoteAction;
       expect(createAction).toBeDefined();
@@ -169,6 +169,14 @@ describe("syncEngine", () => {
       expect(updateAction).toBeDefined();
       expect(updateAction.uuid).toBe("updated-uuid");
       expect(updateAction.front).toBe("Updated?");
+
+      const deleteAction = result.actions.find((a) => a.type === "deleteNote") as DeleteNoteAction;
+      expect(deleteAction).toBeDefined();
+      expect(deleteAction.uuid).toBe("other-uuid");
+
+      const removeAction = result.actions.find((a) => a.type === "removeBlock") as RemoveBlockAction;
+      expect(removeAction).toBeDefined();
+      expect(removeAction.uuid).toBe("other-uuid");
     });
 
     it("returns updatePath when a card's filePath differs from mapping.path", () => {
@@ -209,6 +217,44 @@ describe("syncEngine", () => {
       const updateAction = result.actions.find((a) => a.type === "updateNote") as UpdateNoteAction;
       expect(updateAction).toBeDefined();
       expect(updateAction.front).toBe("Changed?");
+    });
+
+    it("returns deleteNote + removeBlock when a UUID is in state but not in local cards", () => {
+      const state = setMapping(emptyState(), "deleted-uuid", {
+        ankiNoteId: 999,
+        path: "Old/File.md",
+        lastSync: 500,
+      });
+
+      const result = sync([], state);
+      expect(result.actions).toHaveLength(2);
+
+      const deleteAction = result.actions.find((a) => a.type === "deleteNote") as DeleteNoteAction;
+      expect(deleteAction).toBeDefined();
+      expect(deleteAction.ankiNoteId).toBe(999);
+      expect(deleteAction.uuid).toBe("deleted-uuid");
+
+      const removeAction = result.actions.find((a) => a.type === "removeBlock") as RemoveBlockAction;
+      expect(removeAction).toBeDefined();
+      expect(removeAction.filePath).toBe("Old/File.md");
+      expect(removeAction.uuid).toBe("deleted-uuid");
+    });
+
+    it("returns delete actions for all state entries not in local cards", () => {
+      const state = setMapping(
+        setMapping(emptyState(), "uuid-a", {
+          ankiNoteId: 1,
+          path: "A.md",
+          lastSync: 0,
+        }),
+        "uuid-b",
+        { ankiNoteId: 2, path: "B.md", lastSync: 0 },
+      );
+
+      const result = sync([], state);
+      expect(result.actions).toHaveLength(4);
+      expect(result.actions.filter((a) => a.type === "deleteNote")).toHaveLength(2);
+      expect(result.actions.filter((a) => a.type === "removeBlock")).toHaveLength(2);
     });
 
     it("does not mutate the input state", () => {
