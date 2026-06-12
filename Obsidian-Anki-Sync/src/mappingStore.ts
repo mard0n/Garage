@@ -1,7 +1,8 @@
 export type Mapping = {
   ankiNoteId: number;
   path: string;
-  lastSync: number;
+  front: string;
+  back: string;
 };
 
 export type State = Record<string, Mapping>;

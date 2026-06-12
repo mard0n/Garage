@@ -12,7 +12,8 @@ import {
 const baseMapping: Mapping = {
   ankiNoteId: 12345,
   path: "Frontend/JS/Functions.md",
-  lastSync: 1000,
+  front: "What is a closure?",
+  back: "A function with its lexical scope",
 };
 
 describe("mappingStore", () => {

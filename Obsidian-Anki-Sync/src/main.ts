@@ -121,7 +121,8 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
             newState = setMapping(newState, action.uuid, {
               ankiNoteId,
               path: action.filePath,
-              lastSync: Date.now(),
+              front: action.card.front,
+              back: action.card.back,
             });
 
             const updatedCard: Card = {
@@ -140,38 +141,50 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
           }
           break;
         }
-        case "updateNote": {
-          updated++;
-          try {
-            await ankiClient.updateNoteFields({
-              noteId: action.ankiNoteId,
-              front: action.front,
-              back: action.back,
-            });
-          } catch {
-            // Note was deleted in Anki — recreate
-            const newId = await ankiClient.createNote({
-              deckName: action.card.deckPath,
-              front: action.front,
-              back: action.back,
-              uuid: action.uuid,
-            });
-            await replaceBlock(vault, action.filePath, action.uuid, {
-              ...action.card,
-              uuid: action.uuid,
-              ankiNoteId: newId,
-            });
-            newState = setMapping(newState, action.uuid, {
-              ankiNoteId: newId,
-              path: action.filePath,
-              lastSync: Date.now(),
-            });
-            break;
+        case "updateCard": {
+          const mapping = newState[action.uuid];
+          if (!mapping) break;
+
+          if (action.filePath !== mapping.path) {
+            moved++;
           }
+          if (
+            action.card.front !== mapping.front ||
+            action.card.back !== mapping.back
+          ) {
+            updated++;
+            try {
+              await ankiClient.updateNoteFields({
+                noteId: mapping.ankiNoteId,
+                front: action.card.front,
+                back: action.card.back,
+              });
+            } catch {
+              const newId = await ankiClient.createNote({
+                deckName: action.card.deckPath,
+                front: action.card.front,
+                back: action.card.back,
+                uuid: action.uuid,
+              });
+              await replaceBlock(vault, action.filePath, action.uuid, {
+                ...action.card,
+                ankiNoteId: newId,
+              });
+              newState = setMapping(newState, action.uuid, {
+                ankiNoteId: newId,
+                path: action.filePath,
+                front: action.card.front,
+                back: action.card.back,
+              });
+              break;
+            }
+          }
+
           newState = setMapping(newState, action.uuid, {
-            ankiNoteId: action.ankiNoteId,
+            ...mapping,
             path: action.filePath,
-            lastSync: Date.now(),
+            front: action.card.front,
+            back: action.card.back,
           });
           break;
         }
@@ -193,17 +206,6 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
             } catch (err) {
               console.error(`Failed to remove block ${action.uuid}:`, err);
             }
-          }
-          break;
-        }
-        case "updatePath": {
-          moved++;
-          const current = newState[action.uuid];
-          if (current) {
-            newState = setMapping(newState, action.uuid, {
-              ...current,
-              path: action.filePath,
-            });
           }
           break;
         }

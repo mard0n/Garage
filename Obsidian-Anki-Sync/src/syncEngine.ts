@@ -14,20 +14,11 @@ export type CreateNoteAction = {
   card: Card;
 };
 
-export type UpdateNoteAction = {
-  type: "updateNote";
-  ankiNoteId: number;
-  front: string;
-  back: string;
+export type UpdateCardAction = {
+  type: "updateCard";
   uuid: string;
   filePath: string;
   card: Card;
-};
-
-export type UpdatePathAction = {
-  type: "updatePath";
-  uuid: string;
-  filePath: string;
 };
 
 export type DeleteNoteAction = {
@@ -44,8 +35,7 @@ export type RemoveBlockAction = {
 
 export type SyncAction =
   | CreateNoteAction
-  | UpdateNoteAction
-  | UpdatePathAction
+  | UpdateCardAction
   | DeleteNoteAction
   | RemoveBlockAction;
 
@@ -72,22 +62,18 @@ export function sync(localCards: Card[], state: State): SyncResult {
         filePath: localCard.filePath,
         card: localCard,
       });
-    } else {
-      if (localCard.filePath !== mapping.path) {
-        actions.push({ type: "updatePath", uuid, filePath: localCard.filePath });
-      }
-      if (localCard.updatedAt > mapping.lastSync) {
+    } else if (
+        localCard.filePath !== mapping.path ||
+        localCard.front !== mapping.front ||
+        localCard.back !== mapping.back
+      ) {
         actions.push({
-          type: "updateNote",
-          ankiNoteId: mapping.ankiNoteId,
-          front: localCard.front,
-          back: localCard.back,
+          type: "updateCard",
           uuid,
           filePath: localCard.filePath,
           card: localCard,
         });
       }
-    }
   }
 
   // Detect cards deleted from Obsidian (in state but not in local cards)

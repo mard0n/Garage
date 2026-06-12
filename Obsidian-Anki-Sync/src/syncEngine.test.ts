@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type State, emptyState, setMapping } from "./mappingStore";
 import type { Card } from "./models";
 import { sync } from "./syncEngine";
-import type { CreateNoteAction, UpdateNoteAction, UpdatePathAction, DeleteNoteAction, RemoveBlockAction } from "./syncEngine";
+import type { CreateNoteAction, UpdateCardAction, DeleteNoteAction, RemoveBlockAction } from "./syncEngine";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -45,12 +45,13 @@ describe("syncEngine", () => {
       expect(result.actions).toEqual([]);
     });
 
-    it("returns no actions when the card in state has not been updated", () => {
+    it("returns no actions when the card in state matches the mapping", () => {
       const card = makeCard({ updatedAt: 500 });
       const state = setMapping(emptyState(), "test-uuid", {
         ankiNoteId: 12345,
         path: card.filePath,
-        lastSync: 500,
+        front: card.front,
+        back: card.back,
       });
 
       const result = sync([card], state);
@@ -63,7 +64,8 @@ describe("syncEngine", () => {
       const state = setMapping(emptyState(), "existing-uuid", {
         ankiNoteId: 999,
         path: existingCard.filePath,
-        lastSync: 200,
+        front: existingCard.front,
+        back: existingCard.back,
       });
 
       const result = sync([existingCard, newCard], state);
@@ -83,44 +85,44 @@ describe("syncEngine", () => {
       expect(result.actions.every((a) => a.type === "createNote")).toBe(true);
     });
 
-    it("returns updateNote when a card in state has been modified (updatedAt > lastSync)", () => {
-      const card = makeCard({ front: "Changed content?", updatedAt: 1000 });
+    it("returns updateCard when card content differs from mapping", () => {
+      const card = makeCard({ front: "Changed content?" });
       const state = setMapping(emptyState(), "test-uuid", {
         ankiNoteId: 12345,
         path: card.filePath,
-        lastSync: 500,
+        front: "What is 2+2?",
+        back: "4",
       });
 
       const result = sync([card], state);
       expect(result.actions).toHaveLength(1);
-      const action = result.actions[0] as UpdateNoteAction;
-      expect(action.type).toBe("updateNote");
-      expect(action.ankiNoteId).toBe(12345);
-      expect(action.front).toBe("Changed content?");
-      expect(action.back).toBe("4");
+      const action = result.actions[0] as UpdateCardAction;
+      expect(action.type).toBe("updateCard");
       expect(action.uuid).toBe("test-uuid");
       expect(action.filePath).toBe("Math/Arithmetic.md");
       expect(action.card).toEqual(card);
     });
 
-    it("returns no action when updatedAt equals lastSync", () => {
-      const card = makeCard({ updatedAt: 500 });
+    it("returns no action when card content and path match mapping", () => {
+      const card = makeCard({ front: "What is 2+2?" });
       const state = setMapping(emptyState(), "test-uuid", {
         ankiNoteId: 12345,
         path: card.filePath,
-        lastSync: 500,
+        front: "What is 2+2?",
+        back: "4",
       });
 
       const result = sync([card], state);
       expect(result.actions).toEqual([]);
     });
 
-    it("returns no action when updatedAt is less than lastSync", () => {
-      const card = makeCard({ updatedAt: 100 });
+    it("returns no action when card content and path match mapping — different values", () => {
+      const card = makeCard({ front: "Hello?", back: "World", updatedAt: 100 });
       const state = setMapping(emptyState(), "test-uuid", {
         ankiNoteId: 12345,
         path: card.filePath,
-        lastSync: 500,
+        front: "Hello?",
+        back: "World",
       });
 
       const result = sync([card], state);
@@ -132,12 +134,10 @@ describe("syncEngine", () => {
       const updatedCard = makeCard({
         uuid: "updated-uuid",
         front: "Updated?",
-        updatedAt: 1000,
       });
       const unchangedCard = makeCard({
         uuid: "unchanged-uuid",
         front: "Same?",
-        updatedAt: 100,
       });
 
       const state = setMapping(
@@ -145,17 +145,19 @@ describe("syncEngine", () => {
           setMapping(emptyState(), "updated-uuid", {
             ankiNoteId: 1,
             path: updatedCard.filePath,
-            lastSync: 500,
+            front: "Original?",
+            back: "4",
           }),
           "unchanged-uuid",
           {
             ankiNoteId: 2,
             path: unchangedCard.filePath,
-            lastSync: 200,
+            front: "Same?",
+            back: "4",
           },
         ),
         "other-uuid",
-        { ankiNoteId: 3, path: "Other.md", lastSync: 0 },
+        { ankiNoteId: 3, path: "Other.md", front: "", back: "" },
       );
 
       const result = sync([newCard, updatedCard, unchangedCard], state);
@@ -165,10 +167,10 @@ describe("syncEngine", () => {
       expect(createAction).toBeDefined();
       expect(createAction.uuid).toBe("new-uuid");
 
-      const updateAction = result.actions.find((a) => a.type === "updateNote") as UpdateNoteAction;
+      const updateAction = result.actions.find((a) => a.type === "updateCard") as UpdateCardAction;
       expect(updateAction).toBeDefined();
       expect(updateAction.uuid).toBe("updated-uuid");
-      expect(updateAction.front).toBe("Updated?");
+      expect(updateAction.card.front).toBe("Updated?");
 
       const deleteAction = result.actions.find((a) => a.type === "deleteNote") as DeleteNoteAction;
       expect(deleteAction).toBeDefined();
@@ -179,51 +181,51 @@ describe("syncEngine", () => {
       expect(removeAction.uuid).toBe("other-uuid");
     });
 
-    it("returns updatePath when a card's filePath differs from mapping.path", () => {
-      const card = makeCard({ filePath: "Math/Algebra.md", updatedAt: 500 });
+    it("returns updateCard when a card's filePath differs from mapping.path", () => {
+      const card = makeCard({ filePath: "Math/Algebra.md" });
       const state = setMapping(emptyState(), "test-uuid", {
         ankiNoteId: 12345,
         path: "Math/Arithmetic.md",
-        lastSync: 500,
+        front: card.front,
+        back: card.back,
       });
 
       const result = sync([card], state);
       expect(result.actions).toHaveLength(1);
-      const action = result.actions[0] as UpdatePathAction;
-      expect(action.type).toBe("updatePath");
+      const action = result.actions[0] as UpdateCardAction;
+      expect(action.type).toBe("updateCard");
       expect(action.uuid).toBe("test-uuid");
       expect(action.filePath).toBe("Math/Algebra.md");
+      expect(action.card).toEqual(card);
     });
 
-    it("returns updatePath + updateNote when file moved and content changed", () => {
+    it("returns a single updateCard when file moved and content changed", () => {
       const card = makeCard({
         filePath: "Math/Algebra.md",
         front: "Changed?",
-        updatedAt: 1000,
       });
       const state = setMapping(emptyState(), "test-uuid", {
         ankiNoteId: 12345,
         path: "Math/Arithmetic.md",
-        lastSync: 500,
+        front: "What is 2+2?",
+        back: "4",
       });
 
       const result = sync([card], state);
-      expect(result.actions).toHaveLength(2);
+      expect(result.actions).toHaveLength(1);
 
-      const pathAction = result.actions.find((a) => a.type === "updatePath") as UpdatePathAction;
-      expect(pathAction).toBeDefined();
-      expect(pathAction.filePath).toBe("Math/Algebra.md");
-
-      const updateAction = result.actions.find((a) => a.type === "updateNote") as UpdateNoteAction;
-      expect(updateAction).toBeDefined();
-      expect(updateAction.front).toBe("Changed?");
+      const action = result.actions[0] as UpdateCardAction;
+      expect(action.type).toBe("updateCard");
+      expect(action.filePath).toBe("Math/Algebra.md");
+      expect(action.card).toEqual(card);
     });
 
     it("returns deleteNote + removeBlock when a UUID is in state but not in local cards", () => {
       const state = setMapping(emptyState(), "deleted-uuid", {
         ankiNoteId: 999,
         path: "Old/File.md",
-        lastSync: 500,
+        front: "",
+        back: "",
       });
 
       const result = sync([], state);
@@ -245,10 +247,11 @@ describe("syncEngine", () => {
         setMapping(emptyState(), "uuid-a", {
           ankiNoteId: 1,
           path: "A.md",
-          lastSync: 0,
+          front: "",
+          back: "",
         }),
         "uuid-b",
-        { ankiNoteId: 2, path: "B.md", lastSync: 0 },
+        { ankiNoteId: 2, path: "B.md", front: "", back: "" },
       );
 
       const result = sync([], state);
