@@ -48,22 +48,15 @@ function extractAnkiFencedBlocks(markdown: string): Block[] {
 }
 
 function parseMetadataBlock(block: Block): {
-  uuid?: string;
-  ankiNoteId?: number;
-  rest: string[];
+  uuid: string | undefined;
+  ankiNoteId: number | undefined;
 } {
   const lines = block.raw.split("\n");
   let uuid: string | undefined;
   let ankiNoteId: number | undefined;
-  let restStart = lines.length;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (line.trim() === "") {
-      restStart = i + 1;
-      break;
-    }
+  for (const line of lines) {
+    if (line.trim() === "") break;
 
     const idMatch = line.match(/^id:\s*(.+)$/);
     if (idMatch) {
@@ -77,16 +70,14 @@ function parseMetadataBlock(block: Block): {
       continue;
     }
 
-    restStart = i;
     break;
   }
 
-  const rest = lines.slice(restStart);
-
-  return { uuid, ankiNoteId, rest };
+  return { uuid, ankiNoteId };
 }
 
-function extractTagContent(lines: string[], tag: string): { content: string; remaining: string[] } {
+function extractTagContent(block: Block, tag: string): { content: string } {
+  const lines = block.raw.split("\n");
   const openTag = `[${tag}]`;
   const closeTag = `[/${tag}]`;
 
@@ -99,27 +90,30 @@ function extractTagContent(lines: string[], tag: string): { content: string; rem
     }
     if (contentStart !== -1 && trimmed === closeTag) {
       const content = lines.slice(contentStart, i).join("\n");
-      const remaining = lines.slice(i + 1);
-      return { content, remaining };
+      return { content };
     }
   }
 
-  return { content: "", remaining: lines };
+  return { content: "" };
 }
 
-export function parseCards(markdown: string, filePath: string, rootDeck = ""): Card[] {
+export function parseCards(
+  markdown: string,
+  filePath: string,
+  rootDeck = "",
+): Card[] {
   const deckPath = filePathToDeckPath(filePath, rootDeck);
 
   const blocks = extractAnkiFencedBlocks(markdown);
   const cards: Card[] = [];
 
   for (const block of blocks) {
-    const { uuid, ankiNoteId, rest } = parseMetadataBlock(block);
+    const { uuid, ankiNoteId } = parseMetadataBlock(block);
 
-    const { content: front, remaining: afterFront } = extractTagContent(rest, "front");
+    const { content: front } = extractTagContent(block, "front");
     if (!front) continue;
 
-    const { content: back } = extractTagContent(afterFront, "back");
+    const { content: back } = extractTagContent(block, "back");
     if (!back) continue;
 
     cards.push({
