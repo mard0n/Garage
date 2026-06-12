@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type State, emptyState, setMapping } from "./mappingStore";
 import type { Card } from "./models";
 import { sync } from "./syncEngine";
-import type { CreateNoteAction, UpdateNoteAction } from "./syncEngine";
+import type { CreateNoteAction, UpdateNoteAction, UpdatePathAction } from "./syncEngine";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -169,6 +169,46 @@ describe("syncEngine", () => {
       expect(updateAction).toBeDefined();
       expect(updateAction.uuid).toBe("updated-uuid");
       expect(updateAction.front).toBe("Updated?");
+    });
+
+    it("returns updatePath when a card's filePath differs from mapping.path", () => {
+      const card = makeCard({ filePath: "Math/Algebra.md", updatedAt: 500 });
+      const state = setMapping(emptyState(), "test-uuid", {
+        ankiNoteId: 12345,
+        path: "Math/Arithmetic.md",
+        lastSync: 500,
+      });
+
+      const result = sync([card], state);
+      expect(result.actions).toHaveLength(1);
+      const action = result.actions[0] as UpdatePathAction;
+      expect(action.type).toBe("updatePath");
+      expect(action.uuid).toBe("test-uuid");
+      expect(action.filePath).toBe("Math/Algebra.md");
+    });
+
+    it("returns updatePath + updateNote when file moved and content changed", () => {
+      const card = makeCard({
+        filePath: "Math/Algebra.md",
+        front: "Changed?",
+        updatedAt: 1000,
+      });
+      const state = setMapping(emptyState(), "test-uuid", {
+        ankiNoteId: 12345,
+        path: "Math/Arithmetic.md",
+        lastSync: 500,
+      });
+
+      const result = sync([card], state);
+      expect(result.actions).toHaveLength(2);
+
+      const pathAction = result.actions.find((a) => a.type === "updatePath") as UpdatePathAction;
+      expect(pathAction).toBeDefined();
+      expect(pathAction.filePath).toBe("Math/Algebra.md");
+
+      const updateAction = result.actions.find((a) => a.type === "updateNote") as UpdateNoteAction;
+      expect(updateAction).toBeDefined();
+      expect(updateAction.front).toBe("Changed?");
     });
 
     it("does not mutate the input state", () => {

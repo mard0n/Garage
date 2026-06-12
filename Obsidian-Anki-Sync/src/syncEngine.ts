@@ -24,7 +24,13 @@ export type UpdateNoteAction = {
   card: Card;
 };
 
-export type SyncAction = CreateNoteAction | UpdateNoteAction;
+export type UpdatePathAction = {
+  type: "updatePath";
+  uuid: string;
+  filePath: string;
+};
+
+export type SyncAction = CreateNoteAction | UpdateNoteAction | UpdatePathAction;
 
 export type SyncResult = {
   actions: SyncAction[];
@@ -49,16 +55,21 @@ export function sync(localCards: Card[], state: State): SyncResult {
         filePath: localCard.filePath,
         card: localCard,
       });
-    } else if (localCard.updatedAt > mapping.lastSync) {
-      actions.push({
-        type: "updateNote",
-        ankiNoteId: mapping.ankiNoteId,
-        front: localCard.front,
-        back: localCard.back,
-        uuid,
-        filePath: localCard.filePath,
-        card: localCard,
-      });
+    } else {
+      if (localCard.filePath !== mapping.path) {
+        actions.push({ type: "updatePath", uuid, filePath: localCard.filePath });
+      }
+      if (localCard.updatedAt > mapping.lastSync) {
+        actions.push({
+          type: "updateNote",
+          ankiNoteId: mapping.ankiNoteId,
+          front: localCard.front,
+          back: localCard.back,
+          uuid,
+          filePath: localCard.filePath,
+          card: localCard,
+        });
+      }
     }
   }
 

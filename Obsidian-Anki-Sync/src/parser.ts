@@ -105,13 +105,22 @@ export function parseCards(markdown: string, filePath: string, rootDeck = ""): C
 
   for (const block of blocks) {
     const { uuid, ankiNoteId } = parseMetadataBlock(block);
-    if (!uuid) continue;
+    if (!uuid) {
+      console.warn(`Skipping block in ${filePath}: missing id:`);
+      continue;
+    }
 
     const { content: front } = extractTagContent(block, "front");
-    if (!front) continue;
+    if (!front) {
+      console.warn(`Skipping block ${uuid} in ${filePath}: missing [front]`);
+      continue;
+    }
 
     const { content: back } = extractTagContent(block, "back");
-    if (!back) continue;
+    if (!back) {
+      console.warn(`Skipping block ${uuid} in ${filePath}: missing [back]`);
+      continue;
+    }
 
     cards.push({
       uuid,

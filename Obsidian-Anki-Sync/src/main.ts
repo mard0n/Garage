@@ -5,7 +5,11 @@ import { setMapping } from "./mappingStore";
 import type { State } from "./mappingStore";
 import type { Card } from "./models";
 import { parseCards } from "./parser";
-import { AnkiSyncSettingTab, DEFAULT_SETTINGS, type PluginSettings } from "./settings";
+import {
+  AnkiSyncSettingTab,
+  DEFAULT_SETTINGS,
+  type PluginSettings,
+} from "./settings";
 import { type SyncResult, sync } from "./syncEngine";
 
 export default class ObsidianAnkiSyncPlugin extends Plugin {
@@ -36,7 +40,9 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     if (ok) {
       console.log("Obsidian Anki Sync: Anki connected");
     } else {
-      console.log("Obsidian Anki Sync: Anki unreachable (start Anki + AnkiConnect)");
+      console.log(
+        "Obsidian Anki Sync: Anki unreachable (start Anki + AnkiConnect)",
+      );
     }
   }
 
@@ -54,7 +60,8 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
   }
 
   async saveSettings(): Promise<void> {
-    const data = ((await this.loadData()) as Record<string, unknown> | undefined) ?? {};
+    const data =
+      ((await this.loadData()) as Record<string, unknown> | undefined) ?? {};
     await this.saveData({ ...data, settings: this.settings });
   }
 
@@ -75,18 +82,26 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     }
 
     let result: SyncResult;
+    console.log("oldState", state);
     try {
       result = sync(allCards, state ?? {});
     } catch (err) {
-      new Notice(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
+      new Notice(
+        `Sync failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return;
     }
 
     let newState: State = state ?? {};
 
+    let created = 0,
+      updated = 0,
+      moved = 0;
+
     for (const action of result.actions) {
       switch (action.type) {
         case "createNote": {
+          created++;
           try {
             let ankiNoteId: number;
             const existing = await ankiClient.findNotes(action.uuid);
@@ -114,13 +129,19 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
               uuid: action.uuid,
               ankiNoteId,
             };
-            await replaceBlock(vault, action.filePath, action.uuid, updatedCard);
+            await replaceBlock(
+              vault,
+              action.filePath,
+              action.uuid,
+              updatedCard,
+            );
           } catch (err) {
             console.error(`Failed to create note ${action.uuid}:`, err);
           }
           break;
         }
         case "updateNote": {
+          updated++;
           try {
             await ankiClient.updateNoteFields({
               noteId: action.ankiNoteId,
@@ -154,9 +175,29 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
           });
           break;
         }
+        case "updatePath": {
+          moved++;
+          const current = newState[action.uuid];
+          if (current) {
+            newState = setMapping(newState, action.uuid, {
+              ...current,
+              path: action.filePath,
+            });
+          }
+          break;
+        }
       }
     }
 
+    const parts: string[] = [];
+    if (created) parts.push(`${created} created`);
+    if (updated) parts.push(`${updated} updated`);
+    if (moved) parts.push(`${moved} moved`);
+    new Notice(
+      parts.length > 0 ? `Sync: ${parts.join(", ")}` : "Sync: nothing to do",
+    );
+
+    console.log("newState", newState);
     await this.saveData({ settings: this.settings, state: newState });
   }
 }
