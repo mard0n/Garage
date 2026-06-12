@@ -20,7 +20,7 @@ type Block = {
 
 const OPENING_FENCE = /^(`{4,})anki$/;
 
-function extractAnkiBlocks(markdown: string): Block[] {
+function extractAnkiFencedBlocks(markdown: string): Block[] {
   const blocks: Block[] = [];
   const lines = markdown.split("\n");
   let i = 0;
@@ -109,7 +109,7 @@ function extractTagContent(lines: string[], tag: string): { content: string; rem
 export function parseCards(markdown: string, filePath: string, rootDeck = ""): Card[] {
   const deckPath = filePathToDeckPath(filePath, rootDeck);
 
-  const blocks = extractAnkiBlocks(markdown);
+  const blocks = extractAnkiFencedBlocks(markdown);
   const cards: Card[] = [];
 
   for (const block of blocks) {

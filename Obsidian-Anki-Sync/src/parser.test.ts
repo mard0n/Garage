@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseCards } from "./parser";
 
-const singleCard = `\`\`\`\`anki
+const singleCard = `
+\`\`\`\`anki
 id: 8b2c9d11-58f2-49a4-9cb9-53b0f73df887
 ankiNoteId: 1839281
 
@@ -16,7 +17,8 @@ What is a closure?
 A closure remembers variables from outer scope.
 
 [/back]
-\`\`\`\``;
+\`\`\`\`
+`;
 
 describe("parseCards", () => {
   it("parses a single complete card", () => {
