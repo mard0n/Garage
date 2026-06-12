@@ -29,15 +29,14 @@ obsidian-anki-sync/
 ├── .gitignore
 ├── styles.css
 └── src/
-    ├── main.ts           # Plugin entry point
-    ├── models.ts         # Card type (step 3)
-    ├── parser.ts         # Markdown → Card[] (step 4)
-    ├── serializer.ts     # Card → markdown block (step 5)
-    ├── mappingStore.ts   # Local JSON state (step 6)
-    ├── ankiClient.ts     # AnkiConnect HTTP wrapper (step 7)
-    ├── syncEngine.ts     # Sync logic (step 8)
-    ├── fileManager.ts    # File creation from deck paths (step 10)
-    └── settings.ts       # Settings tab (step 11)
+    ├── main.ts           # Plugin entry point + sync logic
+    ├── models.ts         # Card type
+    ├── parser.ts         # Markdown → Card[]
+    ├── serializer.ts     # Card → markdown block
+    ├── mappingStore.ts   # Local JSON state (immutable pure functions)
+    ├── ankiClient.ts     # AnkiConnect HTTP wrapper
+    ├── fileManager.ts    # File creation from deck paths
+    └── settings.ts       # Settings tab
 ```
 
 ## Dev Workflow
@@ -50,49 +49,44 @@ obsidian-anki-sync/
 - Path stored in `.env` as `TEST_VAULT=/path/to/vault`
 - Build script copies `main.js`, `manifest.json`, `styles.css` to `.obsidian/plugins/obsidian-anki-sync/`
 
-## Sync Engine (Step 8)
+## Sync Logic (inline in `main.ts`)
 
 ### Purpose
-The sync engine (`syncEngine.ts`) is the decision-making core. It takes parsed cards from Obsidian and the local mapping state, diffs against Anki, applies conflict rules (Obsidian wins), and executes CRUD operations.
+Sync is a single loop in `runSync()` using a three-way merge algorithm. No separate engine file or action types — all decisions and side effects live together.
 
-### Algorithm — two-phase bidirectional sync
+### Algorithm
 
 ```
-Phase 1 — Obsidian → Anki
-  For each local card:
-    • No UUID? Generate one.
-    • No mapping in state? → createNote() in Anki, store mapping.
-    • Card.updatedAt > mapping.lastSync? → updateNoteFields().
-    • Deck path changed? → changeDeck().
-  
-  For each mapping in state not in local cards:
-    • Card deleted from Obsidian → deleteNotes() from Anki, remove mapping.
+For each existing mapping (state entries):
+  • No local card → deleteNotes() from Anki, removeBlock() from file, removeMapping()
+  • Path changed → mark as moved
+  • findNotes(uuid) fails → skip card
+  • Note missing from Anki → recreate with createNote()
+  • Fetch remote content via notesInfo()
 
-Phase 2 — Anki → Obsidian
-  For each remaining mapping:
-    • UUID not found in Anki? → mark for removal from Obsidian file.
-    • Anki content different from local & Obsidian didn't change → pull into Obsidian.
-    • (If both changed, Obsidian already won in Phase 1.)
+  Three-way merge (local vs base vs remote, where base = stored front/back):
+    • Local=Remote → noop (update path if changed)
+    • Remote changed, local unchanged → pull into file (replaceBlock)
+    • Local changed (regardless of remote) → push to Anki (Obsidian wins)
+
+For each local card not yet in state:
+  • findNotes(uuid) for identity recovery (avoids duplicates after state loss)
+  • ensureDeck + ensureModel + createNote
+  • inject ankiNoteId into file via replaceBlock
+  • save mapping { ankiNoteId, path, front, back }
 ```
 
-### Public API
+### Conflict Resolution
 
-```typescript
-function sync(localCards: Card[], state: State, deps: AnkiDeps): Promise<SyncResult>
-```
-
-| Param | Source | Purpose |
-|-------|--------|---------|
-| `localCards` | Parser | Current Obsidian cards |
-| `state` | mappingStore | Last known state |
-| `deps` | ankiClient mocks | Anki operations |
+| Local vs Base | Remote vs Base | Action |
+|---|---|---|
+| Same | Same | Noop |
+| Same | Different | Pull into Obsidian |
+| Different | Same | Push to Anki |
+| Different | Different | Obsidian wins (push to Anki) |
 
 ### Testing strategy
-Unit/integration tests with mocked anki client functions. Feed in `Card[]` + `State`, verify mock calls and returned actions.
-- New card → createNote called
-- Changed card → updateNoteFields called
-- Deleted card → deleteNotes called
-- Deck moved → changeDeck called
-- Anki changed → pullFromAnki populated
-- Anki deleted → uuidsDeletedFromAnki populated
-- Both changed → Obsidian wins (push to Anki, no pull)
+
+- Sync logic is not independently testable (no separate module) — it's tested via integration with Obsidian APIs
+- Unit tests cover: parser, serializer, mappingStore, ankiClient
+- Full sync correctness is verified manually in the test vault

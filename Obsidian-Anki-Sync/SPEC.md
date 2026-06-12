@@ -31,22 +31,14 @@ Parser
         ↓
 Card Models
         ↓
-Sync Engine
+main.ts (three-way merge — local vs Anki against stored base)
         ↓
 Anki Client (AnkiConnect)
         ↓
 Anki
 ```
 
-Reverse:
-
-```text
-Anki
- ↓
-Sync Engine
- ↓
-Update Markdown Files
-```
+Remote → local flow handled by the same loop: if Anki differs from base but local doesn't, pull into file.
 
 ---
 
@@ -67,7 +59,7 @@ Communication:
 
 Storage:
 
-* Local JSON storage for mappings/state
+* Local JSON storage for mappings/state (front/back content stored for three-way merge)
 
 Parser:
 
@@ -249,19 +241,16 @@ plugin.addStatusBarItem()
 
 # Conflict Rules
 
-Obsidian wins.
+Three-way merge against stored base content (`front`/`back` from last sync):
 
-Logic:
+| Local vs Base | Remote vs Base | Action |
+|---|---|---|
+| Same | Same | Noop |
+| Same | Different | Pull into Obsidian |
+| Different | Same | Push to Anki |
+| Different | Different | Obsidian wins (push to Anki) |
 
-```text
-if obsidianChangedAfterSync:
-
-    overwrite Anki
-
-else if ankiChangedAfterSync:
-
-    update Obsidian
-```
+Obsidian is source of truth during conflicts.
 
 Never allow Anki to overwrite newer Obsidian content.
 
@@ -294,15 +283,13 @@ Flow:
 ```text
 parseCards → uuid present
 ↓
-sync() → uuid not in state → createNote action
+not in state (no mapping) → findNotes(uuid) for identity recovery
 ↓
-findNotes(uuid) → identity recovery (no duplicate if state was lost)
-↓
-ensureDeck + ensureModel + createNote
+ensureDeck + ensureModel + createNote (if not recovered)
 ↓
 inject ankiNoteId into block via replaceBlock
 ↓
-save mapping { ankiNoteId, path, lastSync }
+save mapping { ankiNoteId, path, front, back }
 ```
 
 Result — plugin writes `ankiNoteId:` into the block:
@@ -405,7 +392,8 @@ Store plugin state:
   "uuid": {
     "ankiNoteId": 1234,
     "path": "Frontend/Javascript/Functions.md",
-    "lastSync": 1748000000
+    "front": "What is a closure?",
+    "back": "A function with its lexical scope"
   }
 }
 ```
@@ -421,7 +409,7 @@ Purpose:
 
 * faster lookups
 * deletion detection
-* sync timestamps
+* three-way merge base content
 
 ---
 
@@ -482,7 +470,6 @@ src/
 
 parser.ts
 serializer.ts
-syncEngine.ts
 ankiClient.ts
 mappingStore.ts
 fileManager.ts
@@ -513,16 +500,17 @@ delete
 query changes
 ```
 
-syncEngine.ts
+main.ts
 
 ```text
-all sync decisions
+sync decision (three-way merge)
+all side effects (Anki API, file I/O, state persistence)
 ```
 
 mappingStore.ts
 
 ```text
-local cache/state
+local cache/state (immutable pure functions)
 ```
 
 ---

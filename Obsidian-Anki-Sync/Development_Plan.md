@@ -13,7 +13,7 @@ Small, incremental, spec-driven steps. Each step is complete when its spec secti
 | 7a | Anki Client — Create/Find | `ankiClient.ts`: `findNotes`, `notesInfo`, `createNote` | Create note in Anki, find by UUID, read fields back | ✅ |
 | 7b | Anki Client — Update/Delete | `ankiClient.ts`: `updateNoteFields`, `deleteNotes` | Update front/back, delete note, confirm gone | ✅ |
 | 7c | Anki Client — Decks | `ankiClient.ts`: `deckNames`, `createDeck`, `changeDeck` | List, create, and move notes between decks | ✅ |
-| 8 | Sync Engine | `syncEngine.ts`: diff, conflict rules, CRUD decisions (no deck migration on rename — deck set at creation only) | Integration test (mock parser + client) | ✅ |
+| 8 | Three-way merge sync | `main.ts`: inline sync loop — three-way merge (local vs base vs remote), no separate engine module | Unit tests pass for sub-modules | ✅ |
 | 9 | Manual trigger | Status bar button wired to sync engine | Click → sync runs | ✅ |
 | 10 | File Manager | `fileManager.ts`: create folders/files from deck paths | Test with vault API | ✅ |
 | 11 | Settings + Root Deck | `settings.ts`: root deck name config (default: vault name), `main.ts` resolves `getEffectiveRootDeck()` | Root deck cards land in correct subdecks | ✅ |
