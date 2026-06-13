@@ -40,6 +40,8 @@ Anki
 
 Remote → local flow handled by the same loop: if Anki differs from base but local doesn't, pull into file.
 
+Paths are reconciled using the same 3-way logic. A path change on either side (local file moved vs Anki deck moved) is treated the same as a content change — **push** migrates the deck, **pull** migrates the block to the corresponding file.
+
 ---
 
 # Technology Stack
@@ -79,7 +81,8 @@ Rule:
 * Each file's path is translated to a deck path: `{rootDeck}::{subfolder}::...::{filename}` (`.md` extension stripped, `/` replaced with `::`)
   * Example: `Frontend/JS/Closures.md` with root deck `Obsidian` → deck `Obsidian::Frontend::JS::Closures`
 * The deck path is assigned when the card is first created in Anki
-* Moving/renaming files in the vault does NOT migrate the card to a new deck — the original deck is preserved
+* Moving/renaming files in the vault migrates the card to the corresponding deck
+* Moving a card to a different deck in Anki migrates it to the corresponding file (via `deckToFilePath`)
 
 ---
 
@@ -241,14 +244,24 @@ plugin.addStatusBarItem()
 
 # Conflict Rules
 
-Three-way merge against stored base content (`front`/`back` from last sync):
+Three-way merge against stored base content (`front`/`back`/`path` from last sync).
+Each side's "changed" flag is the OR of its content change and its path change:
 
-| Local vs Base | Remote vs Base | Action |
-|---|---|---|
-| Same | Same | Noop |
-| Same | Different | Pull into Obsidian |
-| Different | Same | Push to Anki |
-| Different | Different | Obsidian wins (push to Anki) |
+```
+localChanged  = (local.front  ≠ base.front || local.back  ≠ base.back) || (local.filePath  ≠ base.path)
+remoteChanged = (remote.front ≠ base.front || remote.back ≠ base.back) || (remoteFilePath ≠ base.path)
+```
+
+Where `remoteFilePath` is derived from the remote card's deck name via `deckToFilePath()`.
+
+Decision table:
+
+| Local vs Base | Remote vs Base | Action | Effect |
+|---|---|---|---|
+| Same | Same | Noop | Skip |
+| Same | Different | **Pull** | Replace block content + optionally move block to new file |
+| Different | Same | **Push** | Update Anki fields + optionally change deck |
+| Different | Different | **Push-wins** | Same as push (local wins) |
 
 Obsidian is source of truth during conflicts.
 
@@ -325,7 +338,7 @@ create file if missing
 append card block
 ```
 
-File path is stored in the local mapping state, not derived from deck name.
+File path is derived from the Anki deck name via `deckToFilePath()`.
 
 ---
 
