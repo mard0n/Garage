@@ -1,8 +1,8 @@
-import { Notice, Plugin, TFile } from "obsidian";
+import { Notice, Plugin, type Vault } from "obsidian";
 import * as ankiClient from "./ankiClient";
 import { appendBlock, removeBlock, replaceBlock } from "./fileManager";
 import { findByAnkiId, removeMapping, setMapping } from "./mappingStore";
-import type { State } from "./mappingStore";
+import type { Mapping, State } from "./mappingStore";
 import type { Card } from "./models";
 import { parseCards } from "./parser";
 import {
@@ -11,19 +11,31 @@ import {
   type PluginSettings,
 } from "./settings";
 
+type SyncAction = "none" | "push" | "pull" | "push-wins";
+
+type SyncCounters = {
+  created: number;
+  updated: number;
+  moved: number;
+  deleted: number;
+  pulled: number;
+  imported: number;
+};
+
 export default class ObsidianAnkiSyncPlugin extends Plugin {
   settings: PluginSettings = DEFAULT_SETTINGS;
+  statusBarItem!: HTMLElement;
 
   async onload() {
     await this.loadSettings();
 
     this.addSettingTab(new AnkiSyncSettingTab(this.app, this));
 
-    const statusBarItem = this.addStatusBarItem();
-    statusBarItem.setText("\u{1F504} Sync");
-    statusBarItem.addClass("mod-clickable");
+    this.statusBarItem = this.addStatusBarItem();
+    this.statusBarItem.setText("\u{1F504} Sync with Anki");
+    this.statusBarItem.addClass("mod-clickable");
 
-    this.registerDomEvent(statusBarItem, "click", async () => {
+    this.registerDomEvent(this.statusBarItem, "click", async () => {
       await this.runSync();
     });
 
@@ -70,37 +82,265 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     return `${relative.replace(/::/g, "/")}.md`;
   }
 
-  async runSync(): Promise<void> {
-    const data = (await this.loadData()) as Record<string, unknown> | undefined;
-    const state = data?.state as State | undefined;
-    const vault = this.app.vault;
-    const rootDeck = this.getEffectiveRootDeck();
-    let newState: State = state ?? {};
+  private determineSyncAction(
+    localChanged: boolean,
+    ankiChanged: boolean,
+  ): SyncAction {
+    if (!localChanged && !ankiChanged) return "none";
+    if (localChanged && !ankiChanged) return "push";
+    if (!localChanged && ankiChanged) return "pull";
+    return "push-wins";
+  }
 
-    // Clean up empty subdecks under root
-    try {
-      const allDecks = await ankiClient.deckNames();
-      const prefix = `${rootDeck}::`;
-      const emptyDecks: string[] = [];
-      for (const deck of allDecks) {
-        if (deck === rootDeck || !deck.startsWith(prefix)) continue;
-        const cards = await ankiClient.findCards(`deck:"${deck}"`);
-        if (cards.length === 0) emptyDecks.push(deck);
+  private async pushCardToAnki(
+    uuid: string,
+    mapping: Mapping,
+    localCard: Card,
+    vault: Vault,
+    rootDeck: string,
+    newState: State,
+    counters: SyncCounters,
+  ): Promise<State> {
+    const contentChanged =
+      localCard.front !== mapping.front || localCard.back !== mapping.back;
+    const pathChanged = localCard.filePath !== mapping.path;
+
+    if (contentChanged) {
+      try {
+        await ankiClient.updateNoteFields({
+          noteId: mapping.ankiNoteId,
+          front: localCard.front,
+          back: localCard.back,
+        });
+      } catch {
+        try {
+          await ankiClient.ensureDeck(localCard.deckPath);
+          await ankiClient.ensureModel();
+          const newId = await ankiClient.createNote({
+            deckName: localCard.deckPath,
+            front: localCard.front,
+            back: localCard.back,
+            uuid,
+          });
+          await replaceBlock(vault, localCard.filePath, uuid, {
+            ...localCard,
+            ankiNoteId: newId,
+          });
+          counters.updated++;
+          if (pathChanged) counters.moved++;
+          return setMapping(newState, uuid, {
+            ankiNoteId: newId,
+            path: localCard.filePath,
+            front: localCard.front,
+            back: localCard.back,
+          });
+        } catch (err) {
+          console.error(`Failed to recreate note ${uuid}:`, err);
+          return newState;
+        }
       }
-      if (emptyDecks.length > 0) {
-        await ankiClient.deleteDecks(emptyDecks);
-      }
-    } catch {
-      // Skip cleanup if Anki unreachable
     }
 
-    // ── Import untracked Anki cards into Obsidian ──
-    let imported = 0;
+    if (pathChanged) {
+      await ankiClient.ensureDeck(localCard.deckPath).catch(() => {
+        console.warn(`Failed to ensure deck for ${uuid}`);
+      });
+      await ankiClient
+        .changeDeck([mapping.ankiNoteId], localCard.deckPath)
+        .catch(() => {
+          console.warn(`Failed to change deck for ${uuid}`);
+        });
+    }
+
+    if (contentChanged) counters.updated++;
+    if (pathChanged) counters.moved++;
+    return setMapping(newState, uuid, {
+      ...mapping,
+      path: localCard.filePath,
+      front: localCard.front,
+      back: localCard.back,
+    });
+  }
+
+  private async reconcileExistingCard(
+    uuid: string,
+    mapping: Mapping,
+    localCardsByUuid: Map<string, Card>,
+    vault: Vault,
+    rootDeck: string,
+    newState: State,
+    counters: SyncCounters,
+  ): Promise<State> {
+    const localCard = localCardsByUuid.get(uuid);
+
+    if (!localCard) {
+      // Deleted from Obsidian → delete from Anki too
+      await ankiClient.deleteNotes([mapping.ankiNoteId]).catch(() => {});
+      await removeBlock(vault, mapping.path, uuid).catch(() => {});
+      counters.deleted++;
+      return removeMapping(newState, uuid);
+    }
+
+    const pathChanged = localCard.filePath !== mapping.path;
+    const contentChanged =
+      localCard.front !== mapping.front || localCard.back !== mapping.back;
+    const localChanged = pathChanged || contentChanged;
+
+    let noteIds: number[];
     try {
-      const allNoteIds = await ankiClient.findNotesByQuery(`deck:"${rootDeck}"`);
+      noteIds = await ankiClient.findNotes(uuid);
+    } catch {
+      return newState;
+    }
+
+    if (noteIds.length > 1) {
+      console.warn(
+        `Multiple notes found for UUID ${uuid} (${noteIds.length}); using first`,
+      );
+    }
+
+    if (noteIds.length === 0) {
+      // Note deleted from Anki → recreate unconditionally
+      try {
+        await ankiClient.ensureDeck(localCard.deckPath);
+        await ankiClient.ensureModel();
+        const newId = await ankiClient.createNote({
+          deckName: localCard.deckPath,
+          front: localCard.front,
+          back: localCard.back,
+          uuid,
+        });
+        counters.updated++;
+        if (pathChanged) counters.moved++;
+        return setMapping(newState, uuid, {
+          ankiNoteId: newId,
+          path: localCard.filePath,
+          front: localCard.front,
+          back: localCard.back,
+        });
+      } catch (err) {
+        console.error(`Failed to recreate note ${uuid}:`, err);
+        return newState;
+      }
+    }
+
+    let remoteFront: string | undefined;
+    let remoteBack: string | undefined;
+    try {
+      const [info] = await ankiClient.notesInfo(noteIds);
+      remoteFront = info?.fields?.Front?.value;
+      remoteBack = info?.fields?.Back?.value;
+    } catch {
+      return newState;
+    }
+    if (remoteFront === undefined || remoteBack === undefined) return newState;
+
+    const ankiChanged =
+      remoteFront !== mapping.front || remoteBack !== mapping.back;
+    const action = this.determineSyncAction(localChanged, ankiChanged);
+
+    switch (action) {
+      case "none":
+        return newState;
+
+      case "push":
+      case "push-wins":
+        return await this.pushCardToAnki(
+          uuid,
+          mapping,
+          localCard,
+          vault,
+          rootDeck,
+          newState,
+          counters,
+        );
+
+      case "pull": {
+        const pulledCard: Card = {
+          ...localCard,
+          front: remoteFront,
+          back: remoteBack,
+        };
+        try {
+          await replaceBlock(vault, localCard.filePath, uuid, pulledCard);
+        } catch (err) {
+          console.error(`Failed to pull block ${uuid}:`, err);
+          return newState;
+        }
+        counters.pulled++;
+        return setMapping(newState, uuid, {
+          ...mapping,
+          path: localCard.filePath,
+          front: remoteFront,
+          back: remoteBack,
+        });
+      }
+    }
+  }
+
+  private async createNewCards(
+    allCards: Card[],
+    newState: State,
+    vault: Vault,
+    rootDeck: string,
+    counters: SyncCounters,
+  ): Promise<State> {
+    for (const card of allCards) {
+      if (!card.uuid || newState[card.uuid]) continue;
+
+      let ankiNoteId: number;
+      try {
+        const existing = await ankiClient.findNotes(card.uuid);
+        if (existing.length > 0) {
+          ankiNoteId = existing[0];
+        } else {
+          await ankiClient.ensureDeck(card.deckPath);
+          await ankiClient.ensureModel();
+          ankiNoteId = await ankiClient.createNote({
+            deckName: card.deckPath,
+            front: card.front,
+            back: card.back,
+            uuid: card.uuid,
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to create note ${card.uuid}:`, err);
+        continue;
+      }
+
+      newState = setMapping(newState, card.uuid, {
+        ankiNoteId,
+        path: card.filePath,
+        front: card.front,
+        back: card.back,
+      });
+
+      await replaceBlock(vault, card.filePath, card.uuid, {
+        ...card,
+        ankiNoteId,
+      }).catch((err: unknown) => {
+        console.error(
+          `Failed to write ankiNoteId to block ${card.uuid}:`,
+          err,
+        );
+      });
+      counters.created++;
+    }
+    return newState;
+  }
+
+  private async importUntrackedCards(
+    newState: State,
+    vault: Vault,
+    rootDeck: string,
+    counters: SyncCounters,
+  ): Promise<State> {
+    try {
+      const allNoteIds = await ankiClient.findNotesByQuery(
+        `deck:"${rootDeck}"`,
+      );
       const allInfos = await ankiClient.notesInfo(allNoteIds);
 
-      // Build card ID → deck name map
       const cardToDeck = new Map<number, string>();
       try {
         const allCardIds = await ankiClient.findCards(`deck:"${rootDeck}"`);
@@ -125,7 +365,6 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
         const newUuid = uuid || crypto.randomUUID();
         const ankiNoteId = info.noteId;
 
-        // Basic → Basic-Obsidian conversion (preserves review history)
         if (!uuid) {
           try {
             await ankiClient.ensureModel();
@@ -170,13 +409,37 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
           front,
           back,
         });
-        imported++;
+        counters.imported++;
       }
     } catch (err) {
       console.error("Import failed:", err);
     }
+    return newState;
+  }
 
-    // Scan all cards
+  private async cleanupEmptyDecks(rootDeck: string): Promise<void> {
+    try {
+      const allDecks = await ankiClient.deckNames();
+      const prefix = `${rootDeck}::`;
+      const emptyDecks: string[] = [];
+      for (const deck of allDecks) {
+        if (deck === rootDeck || !deck.startsWith(prefix)) continue;
+        const cards = await ankiClient.findCards(`deck:"${deck}"`);
+        if (cards.length === 0) emptyDecks.push(deck);
+      }
+      if (emptyDecks.length > 0) {
+        await ankiClient.deleteDecks(emptyDecks);
+      }
+    } catch {
+      // Skip cleanup if Anki unreachable
+    }
+  }
+
+  private async scanVaultCards(rootDeck: string): Promise<{
+    allCards: Card[];
+    localCardsByUuid: Map<string, Card>;
+  }> {
+    const vault = this.app.vault;
     const allCards: Card[] = [];
     for (const file of vault.getMarkdownFiles()) {
       const content = await vault.read(file);
@@ -187,264 +450,86 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       allCards.push(...cards);
     }
 
-    const localByUuid = new Map<string, Card>();
+    const localCardsByUuid = new Map<string, Card>();
     for (const card of allCards) {
-      if (card.uuid) localByUuid.set(card.uuid, card);
+      if (card.uuid) localCardsByUuid.set(card.uuid, card);
     }
+    return { allCards, localCardsByUuid };
+  }
 
-    let created = 0, updated = 0, moved = 0, deleted = 0, pulled = 0;
+  async runSync(): Promise<void> {
+    this.statusBarItem.setText("\u{1F504} Syncing...");
+    try {
+      const rootDeck = this.getEffectiveRootDeck();
+      const vault = this.app.vault;
 
-    // ── Three-way merge on existing state entries ──
-    //
-    //   Local                    Anki        Action
-    //   ─────────────────────────────────────────
-    //   Same                     Same        None
-    //   Changed (content/path)   Same        Push
-    //   Same                     Changed     Pull
-    //   Changed                  Changed     Push (Obsidian wins)
-    //
-    for (const [uuid, mapping] of Object.entries(newState)) {
-      const localCard = localByUuid.get(uuid);
+      const data = (await this.loadData()) as
+        | Record<string, unknown>
+        | undefined;
+      const state = data?.state as State | undefined;
+      let newState: State = state ?? {};
 
-      // ── Deleted from Obsidian ──
-      if (!localCard) {
-        await ankiClient.deleteNotes([mapping.ankiNoteId]).catch(() => {});
-        await removeBlock(vault, mapping.path, uuid).catch(() => {});
-        newState = removeMapping(newState, uuid);
-        deleted++;
-        continue;
+      const counters: SyncCounters = {
+        created: 0,
+        updated: 0,
+        moved: 0,
+        deleted: 0,
+        pulled: 0,
+        imported: 0,
+      };
+
+      // Pass 0: import untracked Anki cards into Obsidian
+      newState = await this.importUntrackedCards(
+        newState,
+        vault,
+        rootDeck,
+        counters,
+      );
+
+      // Scan vault
+      const { allCards, localCardsByUuid } = await this.scanVaultCards(rootDeck);
+
+      // Pass 1: reconcile cards already tracked in state
+      for (const [uuid, mapping] of Object.entries(newState)) {
+        newState = await this.reconcileExistingCard(
+          uuid,
+          mapping,
+          localCardsByUuid,
+          vault,
+          rootDeck,
+          newState,
+          counters,
+        );
       }
 
-      const pathChanged = localCard.filePath !== mapping.path;
-      const contentChanged = localCard.front !== mapping.front || localCard.back !== mapping.back;
-      const localChanged = pathChanged || contentChanged;
+      // Pass 2: create cards not yet in state
+      newState = await this.createNewCards(
+        allCards,
+        newState,
+        vault,
+        rootDeck,
+        counters,
+      );
 
-      // ── Fetch from Anki ──
-      let noteIds: number[];
-      try {
-        noteIds = await ankiClient.findNotes(uuid);
-      } catch {
-        continue;
-      }
+      // Notify
+      const parts: string[] = [];
+      if (counters.imported) parts.push(`${counters.imported} imported`);
+      if (counters.created) parts.push(`${counters.created} created`);
+      if (counters.updated) parts.push(`${counters.updated} updated`);
+      if (counters.moved) parts.push(`${counters.moved} moved`);
+      if (counters.deleted) parts.push(`${counters.deleted} deleted`);
+      if (counters.pulled) parts.push(`${counters.pulled} pulled`);
+      new Notice(
+        parts.length > 0
+          ? `Sync: ${parts.join(", ")}`
+          : "Sync: nothing to do",
+      );
 
-      // ── Note missing from Anki → recreate ──
-      if (noteIds.length === 0) {
-        try {
-          await ankiClient.ensureDeck(localCard.deckPath);
-          await ankiClient.ensureModel();
-          const newId = await ankiClient.createNote({
-            deckName: localCard.deckPath,
-            front: localCard.front,
-            back: localCard.back,
-            uuid,
-          });
-          newState = setMapping(newState, uuid, {
-            ankiNoteId: newId,
-            path: localCard.filePath,
-            front: localCard.front,
-            back: localCard.back,
-          });
-          updated++;
-          if (pathChanged) moved++;
-        } catch (err) {
-          console.error(`Failed to recreate note ${uuid}:`, err);
-        }
-        continue;
-      }
+      await this.cleanupEmptyDecks(rootDeck);
 
-      // ── Remote content ──
-      let remoteFront: string | undefined;
-      let remoteBack: string | undefined;
-      try {
-        const [info] = await ankiClient.notesInfo(noteIds);
-        remoteFront = info?.fields?.Front?.value;
-        remoteBack = info?.fields?.Back?.value;
-      } catch {
-        continue;
-      }
-      if (remoteFront === undefined || remoteBack === undefined) continue;
-
-      const ankiChanged = remoteFront !== mapping.front || remoteBack !== mapping.back;
-
-      // ─────────────────────────────────────────────
-      //  Three-way decision
-      // ─────────────────────────────────────────────
-
-      if (!localChanged && !ankiChanged) {
-        continue;
-      }
-
-      if (localChanged && !ankiChanged) {
-        // Only Obsidian changed → push to Anki
-        if (contentChanged) {
-          try {
-            await ankiClient.updateNoteFields({
-              noteId: mapping.ankiNoteId,
-              front: localCard.front,
-              back: localCard.back,
-            });
-          } catch {
-            try {
-              await ankiClient.ensureDeck(localCard.deckPath);
-              await ankiClient.ensureModel();
-              const newId = await ankiClient.createNote({
-                deckName: localCard.deckPath,
-                front: localCard.front,
-                back: localCard.back,
-                uuid,
-              });
-              await replaceBlock(vault, localCard.filePath, uuid, {
-                ...localCard,
-                ankiNoteId: newId,
-              });
-              newState = setMapping(newState, uuid, {
-                ankiNoteId: newId,
-                path: localCard.filePath,
-                front: localCard.front,
-                back: localCard.back,
-              });
-              if (contentChanged) updated++;
-              if (pathChanged) moved++;
-            } catch (err) {
-              console.error(`Failed to recreate note ${uuid}:`, err);
-            }
-            continue;
-          }
-        }
-        if (pathChanged) {
-          await ankiClient.ensureDeck(localCard.deckPath).catch(() => {});
-          await ankiClient.changeDeck([mapping.ankiNoteId], localCard.deckPath).catch(() => {});
-        }
-        newState = setMapping(newState, uuid, {
-          ...mapping,
-          path: localCard.filePath,
-          front: localCard.front,
-          back: localCard.back,
-        });
-        if (contentChanged) updated++;
-        if (pathChanged) moved++;
-        continue;
-      }
-
-      if (!localChanged && ankiChanged) {
-        // Only Anki changed → pull into file
-        const pulledCard: Card = { ...localCard, front: remoteFront, back: remoteBack };
-        try {
-          await replaceBlock(vault, localCard.filePath, uuid, pulledCard);
-        } catch (err) {
-          console.error(`Failed to pull block ${uuid}:`, err);
-          continue;
-        }
-        newState = setMapping(newState, uuid, {
-          ...mapping,
-          path: localCard.filePath,
-          front: remoteFront,
-          back: remoteBack,
-        });
-        pulled++;
-        continue;
-      }
-
-      // Both changed → Obsidian wins, push
-      if (contentChanged) {
-        try {
-          await ankiClient.updateNoteFields({
-            noteId: mapping.ankiNoteId,
-            front: localCard.front,
-            back: localCard.back,
-          });
-        } catch {
-          try {
-            await ankiClient.ensureDeck(localCard.deckPath);
-            await ankiClient.ensureModel();
-            const newId = await ankiClient.createNote({
-              deckName: localCard.deckPath,
-              front: localCard.front,
-              back: localCard.back,
-              uuid,
-            });
-            await replaceBlock(vault, localCard.filePath, uuid, {
-              ...localCard,
-              ankiNoteId: newId,
-            });
-            newState = setMapping(newState, uuid, {
-              ankiNoteId: newId,
-              path: localCard.filePath,
-              front: localCard.front,
-              back: localCard.back,
-            });
-            if (contentChanged) updated++;
-            if (pathChanged) moved++;
-          } catch (err) {
-            console.error(`Failed to recreate note ${uuid}:`, err);
-          }
-          continue;
-        }
-      }
-      if (pathChanged) {
-        await ankiClient.ensureDeck(localCard.deckPath).catch(() => {});
-        await ankiClient.changeDeck([mapping.ankiNoteId], localCard.deckPath).catch(() => {});
-      }
-      newState = setMapping(newState, uuid, {
-        ...mapping,
-        path: localCard.filePath,
-        front: localCard.front,
-        back: localCard.back,
-      });
-      if (contentChanged) updated++;
-      if (pathChanged) moved++;
+      await this.saveData({ settings: this.settings, state: newState });
+    } finally {
+      this.statusBarItem.setText("\u{1F504} Sync with Anki");
     }
-
-    // Create new cards not yet in state
-    for (const card of allCards) {
-      if (!card.uuid || newState[card.uuid]) continue;
-
-      let ankiNoteId: number;
-      try {
-        const existing = await ankiClient.findNotes(card.uuid);
-        if (existing.length > 0) {
-          ankiNoteId = existing[0];
-        } else {
-          await ankiClient.ensureDeck(card.deckPath);
-          await ankiClient.ensureModel();
-          ankiNoteId = await ankiClient.createNote({
-            deckName: card.deckPath,
-            front: card.front,
-            back: card.back,
-            uuid: card.uuid,
-          });
-        }
-      } catch (err) {
-        console.error(`Failed to create note ${card.uuid}:`, err);
-        continue;
-      }
-
-      newState = setMapping(newState, card.uuid, {
-        ankiNoteId,
-        path: card.filePath,
-        front: card.front,
-        back: card.back,
-      });
-
-      await replaceBlock(vault, card.filePath, card.uuid, {
-        ...card,
-        ankiNoteId,
-      }).catch((err: unknown) => {
-        console.error(`Failed to write ankiNoteId to block ${card.uuid}:`, err);
-      });
-      created++;
-    }
-
-    const parts: string[] = [];
-    if (imported) parts.push(`${imported} imported`);
-    if (created) parts.push(`${created} created`);
-    if (updated) parts.push(`${updated} updated`);
-    if (moved) parts.push(`${moved} moved`);
-    if (deleted) parts.push(`${deleted} deleted`);
-    if (pulled) parts.push(`${pulled} pulled`);
-    new Notice(
-      parts.length > 0 ? `Sync: ${parts.join(", ")}` : "Sync: nothing to do",
-    );
-    await this.saveData({ settings: this.settings, state: newState });
   }
 }

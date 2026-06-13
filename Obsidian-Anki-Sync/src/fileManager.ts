@@ -111,15 +111,15 @@ export async function appendBlock(vault: Vault, filePath: string, card: Card): P
   const file = vault.getAbstractFileByPath(filePath);
   if (!(file instanceof TFile)) {
     await ensureParentFolder(vault, filePath);
-    await vault.create(filePath, serializeCard(card) + "\n");
+    const serialized = serializeCard(card);
+    await vault.create(filePath, serialized.endsWith("\n") ? serialized : serialized + "\n");
     return;
   }
 
   const content = await vault.read(file);
-  const newContent = content.endsWith("\n")
-    ? content + serializeCard(card) + "\n"
-    : content + "\n" + serializeCard(card) + "\n";
-  await vault.modify(file, newContent);
+  const serialized = serializeCard(card);
+  const separator = content.endsWith("\n") ? "\n" : "\n\n";
+  await vault.modify(file, content + separator + serialized + "\n");
 }
 
 function extractUuid(blockLines: string[]): string | null {
