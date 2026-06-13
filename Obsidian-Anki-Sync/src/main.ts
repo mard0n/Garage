@@ -1,7 +1,7 @@
 import { Notice, Plugin, TFile } from "obsidian";
 import * as ankiClient from "./ankiClient";
 import { appendBlock, removeBlock, replaceBlock } from "./fileManager";
-import { removeMapping, setMapping } from "./mappingStore";
+import { findByAnkiId, removeMapping, setMapping } from "./mappingStore";
 import type { State } from "./mappingStore";
 import type { Card } from "./models";
 import { parseCards } from "./parser";
@@ -64,11 +64,18 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     await this.saveData({ ...data, settings: this.settings });
   }
 
+  deckToFilePath(rootDeck: string, deckName: string): string {
+    if (deckName === rootDeck) return `${rootDeck}.md`;
+    const relative = deckName.slice(rootDeck.length + 2);
+    return `${relative.replace(/::/g, "/")}.md`;
+  }
+
   async runSync(): Promise<void> {
     const data = (await this.loadData()) as Record<string, unknown> | undefined;
     const state = data?.state as State | undefined;
     const vault = this.app.vault;
     const rootDeck = this.getEffectiveRootDeck();
+    let newState: State = state ?? {};
 
     // Clean up empty subdecks under root
     try {
@@ -87,6 +94,88 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       // Skip cleanup if Anki unreachable
     }
 
+    // ── Import untracked Anki cards into Obsidian ──
+    let imported = 0;
+    try {
+      const allNoteIds = await ankiClient.findNotesByQuery(`deck:"${rootDeck}"`);
+      const allInfos = await ankiClient.notesInfo(allNoteIds);
+
+      // Build card ID → deck name map
+      const cardToDeck = new Map<number, string>();
+      try {
+        const allCardIds = await ankiClient.findCards(`deck:"${rootDeck}"`);
+        const decksMap = await ankiClient.getDecks(allCardIds);
+        for (const [deckName, cardIds] of Object.entries(decksMap)) {
+          for (const cid of cardIds) {
+            cardToDeck.set(cid, deckName);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to build deck map:", err);
+      }
+
+      for (const info of allInfos) {
+        const uuid = info.fields?.UUID?.value?.trim();
+        const front = info.fields?.Front?.value;
+        const back = info.fields?.Back?.value;
+        if (!front || !back) continue;
+        if (uuid && newState?.[uuid]) continue;
+        if (newState && findByAnkiId(newState, info.noteId)) continue;
+
+        const newUuid = uuid || crypto.randomUUID();
+        const ankiNoteId = info.noteId;
+
+        // Basic → Basic-Obsidian conversion (preserves review history)
+        if (!uuid) {
+          try {
+            await ankiClient.ensureModel();
+            await ankiClient.updateNoteModel({
+              noteId: info.noteId,
+              modelName: "Basic-Obsidian",
+              front,
+              back,
+              uuid: newUuid,
+            });
+          } catch (err) {
+            console.error(`Failed to convert note ${info.noteId}:`, err);
+            continue;
+          }
+        }
+
+        const deckName =
+          info.cards.length > 0
+            ? (cardToDeck.get(info.cards[0]) ?? rootDeck)
+            : rootDeck;
+        const filePath = this.deckToFilePath(rootDeck, deckName);
+
+        const untitledCard: Card = {
+          uuid: newUuid,
+          ankiNoteId,
+          front,
+          back,
+          filePath,
+          deckPath: deckName,
+          updatedAt: Date.now(),
+        };
+        try {
+          await appendBlock(vault, filePath, untitledCard);
+        } catch (err) {
+          console.error(`Failed to create file ${filePath}:`, err);
+          continue;
+        }
+
+        newState = setMapping(newState, newUuid, {
+          ankiNoteId,
+          path: filePath,
+          front,
+          back,
+        });
+        imported++;
+      }
+    } catch (err) {
+      console.error("Import failed:", err);
+    }
+
     // Scan all cards
     const allCards: Card[] = [];
     for (const file of vault.getMarkdownFiles()) {
@@ -103,7 +192,6 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       if (card.uuid) localByUuid.set(card.uuid, card);
     }
 
-    let newState: State = state ?? {};
     let created = 0, updated = 0, moved = 0, deleted = 0, pulled = 0;
 
     // ── Three-way merge on existing state entries ──
@@ -348,6 +436,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     }
 
     const parts: string[] = [];
+    if (imported) parts.push(`${imported} imported`);
     if (created) parts.push(`${created} created`);
     if (updated) parts.push(`${updated} updated`);
     if (moved) parts.push(`${moved} moved`);

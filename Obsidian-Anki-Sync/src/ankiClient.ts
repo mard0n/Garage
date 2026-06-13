@@ -24,6 +24,7 @@ export async function ping(): Promise<boolean> {
 
 export type NoteInfo = {
   noteId: number;
+  modelName: string;
   fields: Record<string, { value: string }>;
   cards: number[];
 };
@@ -93,6 +94,28 @@ export async function updateNoteFields(params: UpdateNoteFieldsParams): Promise<
   return request("updateNoteFields", { note: { id: params.noteId, fields } });
 }
 
+export type UpdateNoteModelParams = {
+  noteId: number;
+  modelName: string;
+  front: string;
+  back: string;
+  uuid: string;
+};
+
+export async function updateNoteModel(params: UpdateNoteModelParams): Promise<null> {
+  return request("updateNoteModel", {
+    note: {
+      id: params.noteId,
+      modelName: params.modelName,
+      fields: {
+        Front: params.front,
+        Back: params.back,
+        UUID: params.uuid,
+      },
+    },
+  });
+}
+
 export async function deleteNotes(noteIds: number[]): Promise<null> {
   return request("deleteNotes", { notes: noteIds });
 }
@@ -118,6 +141,10 @@ export async function ensureDeck(name: string): Promise<void> {
 
 export async function changeDeck(cards: number[], deckName: string): Promise<null> {
   return request("changeDeck", { cards, deck: deckName });
+}
+
+export async function getDecks(cards: number[]): Promise<Record<string, number[]>> {
+  return request("getDecks", { cards });
 }
 
 export async function findNotesByQuery(query: string): Promise<number[]> {
