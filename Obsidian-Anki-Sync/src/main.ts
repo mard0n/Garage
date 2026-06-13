@@ -49,6 +49,18 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "insert-anki-card",
+      name: "Insert Anki card",
+      editorCallback: (editor) => {
+        const uuid = crypto.randomUUID();
+        const start = editor.getCursor("from");
+        const template = `\`\`\`\`anki\nid: ${uuid}\n\n[front]\n\n[/front]\n\n[back]\n\n[/back]\n\`\`\`\`\n`;
+        editor.replaceSelection(template);
+        editor.setCursor(start.line + 4, 0);
+      },
+    });
+
     const ok = await ankiClient.ping();
     if (ok) {
       console.log("Obsidian Anki Sync: Anki connected");

@@ -1,9 +1,8 @@
-import { Component, MarkdownRenderer, type Plugin } from "obsidian";
+import { Component, MarkdownRenderer, MarkdownView, type Plugin } from "obsidian";
 
 export function registerCardRenderer(plugin: Plugin): void {
   plugin.registerMarkdownCodeBlockProcessor("anki", async (source, el, ctx) => {
     const { front, back } = parseCardBlock(source);
-    if (!front && !back) return;
 
     const container = el.createDiv({ cls: "anki-card" });
 
@@ -22,6 +21,26 @@ export function registerCardRenderer(plugin: Plugin): void {
     const backComponent = new Component();
     ctx.addChild(backComponent);
     await MarkdownRenderer.render(plugin.app, back, backContent, ctx.sourcePath, backComponent);
+
+    // Double-click to open in edit mode at the card's location
+    container.addEventListener("dblclick", async () => {
+      try {
+        const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view || !view.file) return;
+        const sectionInfo = ctx.getSectionInfo(el);
+        if (!sectionInfo) return;
+        await plugin.app.workspace.getLeaf(false).openFile(view.file, {
+          active: true,
+          state: { mode: "source" },
+        });
+        requestAnimationFrame(() => {
+          const editor = plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+          if (editor) editor.setCursor(sectionInfo.lineStart, 0);
+        });
+      } catch (err) {
+        console.error("Failed to open card in edit mode:", err);
+      }
+    });
   });
 }
 
