@@ -1,5 +1,6 @@
 import { Notice, Plugin } from "obsidian";
 import * as ankiClient from "./ankiClient";
+import { registerCardRenderer } from "./cardRenderer";
 import { appendBlock, removeBlock, replaceBlock } from "./fileManager";
 import { removeMapping, setMapping } from "./mappingStore";
 import type { Mapping, State } from "./mappingStore";
@@ -54,6 +55,8 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     } else {
       console.log("Obsidian Anki Sync: Anki unreachable (start Anki + AnkiConnect)");
     }
+
+    registerCardRenderer(this);
   }
 
   getEffectiveRootDeck(): string {

@@ -1,1 +1,52 @@
-/* Obsidian Anki Sync — styles will be added as needed */
+.cm-preview-code-block.cm-embed-block.markdown-rendered.cm-lang-anki {
+  border-radius: 12px !important;
+}
+
+.anki-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.anki-card-front {
+  position: relative;
+  padding: 24px 24px 20px;
+}
+
+.anki-card-back {
+  position: relative;
+  padding: 20px 24px 24px;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.anki-card-label {
+  display: inline-block;
+  font-size: 0.65em;
+  font-weight: 600;
+  color: var(--text-accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.anki-card:hover .anki-card-label {
+  opacity: 1;
+}
+
+.anki-card-content {
+  font-size: 1em;
+  line-height: 1.6;
+}
+
+.anki-card-content > *:first-child {
+  margin-top: 0;
+}
+
+.anki-card-content > *:last-child {
+  margin-bottom: 0;
+}

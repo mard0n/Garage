@@ -18,7 +18,7 @@ function syncToVault() {
   }
   const dest = `${testVault}/.obsidian/plugins/obsidian-anki-sync/`;
   try {
-    execSync(`rsync -a --delete --exclude data.json manifest.json dist/ "${dest}"`, {
+    execSync(`rsync -a --delete --exclude data.json manifest.json styles.css dist/ "${dest}"`, {
       stdio: "inherit",
     });
     console.log(`📦 Synced plugin to vault`);
