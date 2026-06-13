@@ -1,0 +1,26 @@
+{
+  "name": "obsidian-anki-sync",
+  "version": "0.1.0",
+  "description": "Two-way sync between Obsidian and Anki",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs --watch",
+    "build": "node esbuild.config.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --apply src/",
+    "format": "biome format --write src/"
+  },
+  "keywords": ["obsidian", "anki", "sync"],
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^22.0.0",
+    "dotenv": "^16.4.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
