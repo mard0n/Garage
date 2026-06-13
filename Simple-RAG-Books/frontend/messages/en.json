@@ -1,0 +1,77 @@
+{
+  "header": {
+    "logoTitle": "E-Kutubxona",
+    "logoSubtitle": "Search your library",
+    "browse": "Browse",
+    "saved": "Saved",
+    "signIn": "Sign in"
+  },
+  "home": {
+    "title": "Find the right book, fast",
+    "description": "Search by title or author, or use AI to search inside book content.",
+    "searchPlaceholder": "Search books by title or author…",
+    "search": "Search",
+    "aiSearch": "AI Search",
+    "tip": "Tip: press to run a text search.",
+    "enterKey": "Enter",
+    "browseBooks": "Browse books",
+    "booksCount": "books",
+    "categoriesCount": "categories",
+    "noCover": "No cover",
+    "books": "books"
+  },
+  "search": {
+    "back": "Back",
+    "title": "Search",
+    "semanticDescription": "AI semantic search inside book content.",
+    "textDescription": "Title/author search across your library.",
+    "searchPlaceholder": "Search books…",
+    "search": "Search",
+    "text": "Text",
+    "ai": "AI",
+    "loading": "Loading…",
+    "noMatches": "No matches",
+    "noBooksFound": "No books found for \"{{query}}\".",
+    "foundBooks": "books found",
+    "foundResults": "results found",
+    "unknownBook": "Unknown Book",
+    "score": "Score",
+    "pages": "Pages",
+    "viewPdf": "View PDF",
+    "noCover": "No cover"
+  },
+  "saved": {
+    "title": "My Saved Books",
+    "loading": "Loading...",
+    "signInPrompt": "Sign in to save and view your saved books.",
+    "signIn": "Sign In",
+    "emptyPrompt": "You haven't saved any books yet. Browse books and click \"Save\" to add them here.",
+    "browseBooks": "Browse Books",
+    "savedCount": "saved books",
+    "noCover": "No cover"
+  },
+  "book": {
+    "backToSearch": "Back to search",
+    "notFound": "Book not found",
+    "category": "Category",
+    "readPdf": "Read PDF",
+    "save": "Save",
+    "saved": "Saved",
+    "aboutTitle": "About this book",
+    "aboutDescription": "This book is available in your digital library. Use \"Read PDF\" to open the full document in a new tab.",
+    "noCover": "No cover"
+  },
+  "footer": {
+    "title": "E-Kutubxona",
+    "subtitle": "Search and explore your library",
+    "search": "Search"
+  },
+  "metadata": {
+    "title": "Simple RAG Books",
+    "description": "Search and explore your book collection"
+  },
+  "language": {
+    "switch": "Change language",
+    "current": "Current language"
+  }
+}

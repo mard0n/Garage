@@ -1,0 +1,14 @@
+numpy<2
+docling~=2.24
+FlagEmbedding
+qdrant-client
+requests
+openrouter
+pymupdf
+fastapi
+uvicorn
+python-dotenv
+google-cloud-storage
+transformers
+sentence-transformers
+pydantic
