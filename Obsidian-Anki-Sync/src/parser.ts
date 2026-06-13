@@ -6,6 +6,20 @@ function filePathToDeckPath(filePath: string, rootDeck: string): string {
     path = path.slice(0, -3);
   }
 
+  // Branch deck convention: if the file name equals the parent folder name
+  // (e.g. "Folder/Folder.md"), the file represents a branch deck.
+  // Deduplicate the last segment so it maps back to "Parent::Folder"
+  // instead of "Parent::Folder::Folder".
+  const parts = path.split("/");
+  if (parts.length >= 2 && parts[parts.length - 1] === parts[parts.length - 2]) {
+    parts.pop();
+    path = parts.join("/");
+  }
+
+  // Root deck file: if the full path equals the root deck name,
+  // map directly to the root deck, not rootDeck::rootDeck
+  if (rootDeck && path === rootDeck) return rootDeck;
+
   const deckSuffix = path.replace(/\//g, "::");
 
   if (rootDeck) {

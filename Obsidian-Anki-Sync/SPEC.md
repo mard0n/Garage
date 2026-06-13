@@ -75,7 +75,7 @@ Parser:
 
 The entire vault maps to a single configurable root deck, with the vault's folder hierarchy preserved as subdecks.
 
-Rule:
+Rules:
 
 * The root deck name is configured in plugin settings (default: vault name if left empty)
 * Each file's path is translated to a deck path: `{rootDeck}::{subfolder}::...::{filename}` (`.md` extension stripped, `/` replaced with `::`)
@@ -83,6 +83,15 @@ Rule:
 * The deck path is assigned when the card is first created in Anki
 * Moving/renaming files in the vault migrates the card to the corresponding deck
 * Moving a card to a different deck in Anki migrates it to the corresponding file (via `deckToFilePath`)
+
+**Branch deck convention:** If a deck has sub-decks (a "branch" deck), cards inside it are placed in a file named after the deck, inside a folder of the same name. This avoids conflicts between a file and a folder at the same path.
+
+| Deck type | Anki deck | File path |
+|---|---|---|
+| Leaf (no sub-decks) | `Web dev::Javascript::Functions` | `Web dev/Javascript/Functions.md` |
+| Branch (has sub-decks) | `Web dev::Javascript` | `Web dev/Javascript/Javascript.md` |
+
+The reverse direction (file → deck) uses the same convention: if a file's name matches its parent folder name, it maps to the parent folder deck rather than a nested deck. For example, `Javascript/Javascript.md` maps to deck `Web dev::Javascript`, not `Web dev::Javascript::Javascript`.
 
 ---
 

@@ -74,10 +74,16 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
     await this.saveData({ ...data, settings: this.settings });
   }
 
-  deckToFilePath(rootDeck: string, deckName: string): string {
+  deckToFilePath(rootDeck: string, deckName: string, branchDecks: Set<string>): string {
     if (deckName === rootDeck) return `${rootDeck}.md`;
     const relative = deckName.slice(rootDeck.length + 2);
-    return `${relative.replace(/::/g, "/")}.md`;
+    const path = relative.replace(/::/g, "/");
+    if (branchDecks.has(deckName)) {
+      const parts = path.split("/");
+      const leaf = parts[parts.length - 1];
+      return `${path}/${leaf}.md`;
+    }
+    return `${path}.md`;
   }
 
   private async getAllRemoteCards(rootDeck: string): Promise<{
@@ -172,6 +178,20 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
         imported: 0,
       };
 
+      // Build set of branch decks (decks that have sub-decks)
+      const branchDecks = new Set<string>();
+      try {
+        const allDeckNames = await ankiClient.deckNames();
+        for (const deck of allDeckNames) {
+          const prefix = `${deck}::`;
+          if (allDeckNames.some((d) => d !== deck && d.startsWith(prefix))) {
+            branchDecks.add(deck);
+          }
+        }
+      } catch {
+        // Anki unreachable — skip branch detection, use flat mapping
+      }
+
       // remoteCards ← anki.getAllCards()
       const { remoteCardsByUuid, notesWithoutUuid, cardToDeck } =
         await this.getAllRemoteCards(rootDeck);
@@ -187,7 +207,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
       for (const [uuid, remote] of remoteCardsByUuid) {
         if (newState[uuid] || localCardsByUuid.has(uuid)) continue;
 
-        const filePath = this.deckToFilePath(rootDeck, remote.deckName);
+        const filePath = this.deckToFilePath(rootDeck, remote.deckName, branchDecks);
         const importedCard: Card = {
           uuid,
           ankiNoteId: remote.ankiNoteId,
@@ -231,7 +251,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
           continue;
         }
 
-        const filePath = this.deckToFilePath(rootDeck, deckName);
+        const filePath = this.deckToFilePath(rootDeck, deckName, branchDecks);
         const importedCard: Card = {
           uuid: newUuid,
           ankiNoteId: info.noteId,
@@ -300,7 +320,7 @@ export default class ObsidianAnkiSyncPlugin extends Plugin {
         const localChanged = localContentChanged || localPathChanged;
 
         const remoteContentChanged = remote.front !== mapping.front || remote.back !== mapping.back;
-        const remoteFilePath = this.deckToFilePath(rootDeck, remote.deckName);
+        const remoteFilePath = this.deckToFilePath(rootDeck, remote.deckName, branchDecks);
         const remotePathChanged = remoteFilePath !== mapping.path;
         const remoteChanged = remoteContentChanged || remotePathChanged;
 
